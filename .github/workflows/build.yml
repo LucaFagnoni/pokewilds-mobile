@@ -535,6 +535,8 @@ jobs:
       # The server's engine: the phones' stripped profile with the game's own
       # module (native world generation), cross-compiled for Windows with
       # MinGW, in place of the official template that the export copies.
+      # Plus UPnP, which only the server uses (dedicated_server.gd opens its
+      # port on the router; without the module it never tried).
       - uses: actions/checkout@v4
         with:
           repository: godotengine/godot
@@ -557,7 +559,7 @@ jobs:
           sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
           python3 -m venv "$RUNNER_TEMP/scons" && "$RUNNER_TEMP/scons/bin/pip" -q install scons
           "$RUNNER_TEMP/scons/bin/scons" platform=windows use_mingw=yes arch=x86_64 target=template_release profile="$ENGINE_PROFILE" \
-            d3d12=no cache_path="$HOME/.scons_cache" -j"$(nproc)"
+            module_upnp_enabled=yes d3d12=no cache_path="$HOME/.scons_cache" -j"$(nproc)"
           tpl="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
           cp bin/godot.windows.template_release.x86_64.exe "$tpl/windows_release_x86_64.exe"
           cp bin/godot.windows.template_release.x86_64.console.exe "$tpl/windows_release_x86_64_console.exe"

@@ -43,14 +43,16 @@ var motion := PlayerMotion.new()
 var _ground: Node
 
 func _ready() -> void:
+    # Off first: an interpolated camera is put in physics mode whatever
+    # process_callback says.
+    physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+    sprite.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+    camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
     if frame_locked:
         camera.process_callback = Camera2D.CAMERA2D_PROCESS_IDLE
         # Before the world's own frame step, which places whatever the player
         # rides, flies or surfs on; after it, the mount trailed by a frame.
         process_priority = -10
-    physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
-    sprite.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
-    camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
     walk_texture = sprite.texture
     sprite.hframes = 8
     sprite.vframes = 1

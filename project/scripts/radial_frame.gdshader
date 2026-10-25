@@ -2,10 +2,14 @@ shader_type canvas_item;
 render_mode unshaded;
 uniform float base_radius = 76.0;
 uniform float border_outset = 1.0;
-vec4 border_pixel(sampler2D artwork, vec2 dimensions, float column, float row) {
+// Where border texel (column, row) is. TEXTURE is read in fragment(): a
+// built-in sampler passed to a function is a shader compiler error.
+vec2 border_uv(vec2 dimensions, float column, float row) {
     float sx=8.0+mod(column,max(1.0,dimensions.x-16.0));
     float sy=clamp(row,0.0,min(7.0,dimensions.y-1.0));
-    vec4 ink=texture(artwork,(vec2(sx,sy)+vec2(0.5))/dimensions);
+    return (vec2(sx,sy)+vec2(0.5))/dimensions;
+}
+vec4 opaque(vec4 ink) {
     return ink.a<0.5 ? vec4(1.0) : ink;
 }
 void fragment() {
@@ -24,8 +28,8 @@ void fragment() {
     float cw=max(30.0*edge/max(radius,1.0),0.001)*0.5;
     float ry=smoothstep(rb-rw,rb+rw,row);
     float cx=smoothstep(cb-cw,cb+cw,column);
-    vec4 low=mix(border_pixel(TEXTURE,dimensions,cb-1.0,rb-1.0),border_pixel(TEXTURE,dimensions,cb,rb-1.0),cx);
-    vec4 high=mix(border_pixel(TEXTURE,dimensions,cb-1.0,rb),border_pixel(TEXTURE,dimensions,cb,rb),cx);
+    vec4 low=mix(opaque(texture(TEXTURE,border_uv(dimensions,cb-1.0,rb-1.0))),opaque(texture(TEXTURE,border_uv(dimensions,cb,rb-1.0))),cx);
+    vec4 high=mix(opaque(texture(TEXTURE,border_uv(dimensions,cb-1.0,rb))),opaque(texture(TEXTURE,border_uv(dimensions,cb,rb))),cx);
     vec4 ink=mix(low,high,ry);
     COLOR=vec4(ink.rgb,ink.a*coverage);
 }

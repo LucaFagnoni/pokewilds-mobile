@@ -5,6 +5,10 @@ the version description in Feather. Write it for players, not developers.
 
 ## Next version
 
+### Server and multiplayer
+- **The server opens its port on the router by itself:** the Windows server was built without UPnP, so it never even tried, and said "The router did not open the port by itself (UPnP off?)" whatever the router could do. With UPnP on in the router, players from outside your Wi-Fi can now join without forwarding the port by hand. Set `open_router_port=false` in server.cfg to keep it closed.
+- **A clean server start:** the server no longer prints a physics WARNING and a shader ERROR every time it starts. Neither was harmful; the shader one came from the field move wheel and is fixed for phones too.
+
 ## 0.10.444
 
 ### Fixes
