@@ -303,6 +303,9 @@ func contact()->void:
         begin_encounter(wild_id,false);return
 
 var claiming_id:=-1
+## The battle session main held when this encounter was claimed: one fought
+## for the encounter is a new one (finish_encounter).
+var battle_before:Object=null
 ## Why the last claim was turned away, for words the player is shown
 ## (coop_population_runtime.gd refusal).
 var refused:=""
@@ -329,6 +332,7 @@ func reserve(wild_id:int,field_attack:bool=false)->bool:
         await game.command("wild_release",{"area":area,"wild_id":wild_id});return false
     original_profile=game._personal_profile().duplicate(true)
     encounter={"area":area,"wild_id":wild_id,"field_attack":field_attack}
+    battle_before=game.main.battle_session
     return true
 
 func begin_encounter(wild_id:int,field_attack:bool)->void:
@@ -350,7 +354,11 @@ func finish_encounter(outcome:String,aftermath:Dictionary={})->bool:
     finishing=true
     var profile:Dictionary=game._personal_profile()
     var sent_pending:Array=profile.save.get("coop_pending_pokemon",[]).duplicate(true)
-    var result:Dictionary=await game.command("wild_finish",{"area":encounter.area,"wild_id":encounter.wild_id,"outcome":outcome,"calm":bool(encounter.field_attack),"profile":profile,"base":game.profile_base,"aftermath":aftermath,"battle":game.main.battle_report()})
+    # Only a battle fought for this encounter: a friendly Pokemon joining or a
+    # ball thrown in the field has none, and the last battle's log (another
+    # Pokemon) made the host refuse it as "wrong_enemy".
+    var battle:Dictionary=game.main.battle_report() if game.main.battle_session!=battle_before else {}
+    var result:Dictionary=await game.command("wild_finish",{"area":encounter.area,"wild_id":encounter.wild_id,"outcome":outcome,"calm":bool(encounter.field_attack),"profile":profile,"base":game.profile_base,"aftermath":aftermath,"battle":battle})
     if not result.get("ok",false):
         if not game.active:finishing=false;return false
         # Turned away (a battle the host's replay does not end this way, or a
