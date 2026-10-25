@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.10.442",
+          "buildVersion": "442",
+          "date": "2026-10-25T20:18:46Z",
+          "localizedDescription": "### Server and multiplayer\n- **Crash reports reach the server:** a phone's own log cannot be opened on Android, so when you join a dedicated server your game now sends it the end of the log of your previous session, once. The server keeps it in `server_data/client_logs` and says so in its window. After a crash, joining again is enough for the server's owner to see what happened.",
+          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0054/Pokewilds-unsigned.ipa",
+          "size": 63967982,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "0.10.440",
           "buildVersion": "440",
           "date": "2026-10-25T19:05:20Z",
@@ -98,15 +107,6 @@
           "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0040/Pokewilds-unsigned.ipa",
           "size": 63274103,
           "minOSVersion": "15.0"
-        },
-        {
-          "version": "0.10.213",
-          "buildVersion": "213",
-          "date": "2026-10-22T00:23:28Z",
-          "localizedDescription": "Android wrapper: gradlew is executable (Godot's export runs it)",
-          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0039/Pokewilds-unsigned.ipa",
-          "size": 63274101,
-          "minOSVersion": "15.0"
         }
       ],
       "appPermissions": {
@@ -117,11 +117,11 @@
           "NSPhotoLibraryUsageDescription": "Not used by the game (Godot's default key)."
         }
       },
-      "version": "0.10.440",
-      "versionDate": "2026-10-25T19:05:20Z",
-      "versionDescription": "### Fixes\n- **Friendly Pokémon can join your party online again:** on a dedicated server, a friendly Pokémon that wanted to join you, or one caught with a ball thrown in the field, was refused by the host every time after you had fought any battle, until you reconnected. The game sent the host the last battle you fought, against another Pokémon, and the host turned it down.",
-      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0053/Pokewilds-unsigned.ipa",
-      "size": 63967434
+      "version": "0.10.442",
+      "versionDate": "2026-10-25T20:18:46Z",
+      "versionDescription": "### Server and multiplayer\n- **Crash reports reach the server:** a phone's own log cannot be opened on Android, so when you join a dedicated server your game now sends it the end of the log of your previous session, once. The server keeps it in `server_data/client_logs` and says so in its window. After a crash, joining again is enough for the server's owner to see what happened.",
+      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0054/Pokewilds-unsigned.ipa",
+      "size": 63967982
     }
   ],
   "news": []
