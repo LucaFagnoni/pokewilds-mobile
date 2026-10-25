@@ -5,6 +5,8 @@ the version description in Feather. Write it for players, not developers.
 
 ## Next version
 
+## 0.10.440
+
 ### Fixes
 - **Friendly Pokémon can join your party online again:** on a dedicated server, a friendly Pokémon that wanted to join you, or one caught with a ball thrown in the field, was refused by the host every time after you had fought any battle, until you reconnected. The game sent the host the last battle you fought, against another Pokémon, and the host turned it down.
 
