@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.10.438",
+          "buildVersion": "438",
+          "date": "2026-10-25T18:21:53Z",
+          "localizedDescription": "### Fixes\n- **Wild Pokémon no longer flash on screen:** while you walk, a wild Pokémon could appear for a single frame in the middle of the screen, where there was none: a Lapras drawn whole in a river, a Squirtle's head in the grass. It was seen most on iPhone. Habitat Pokémon and eggs had the same flash and are fixed too.\n\n### Server and multiplayer\n- **Phones keep a log:** the game now writes a log on iPhone and Android too (on iPhone: Files app → PokeWilds → logs), so a disconnect can be looked into afterwards. When the game stops for more than 5 seconds during an online game, the log says so, which tells a frozen phone apart from a lost connection.",
+          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0052/Pokewilds-unsigned.ipa",
+          "size": 63967390,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "0.10.436",
           "buildVersion": "436",
           "date": "2026-10-23T23:02:38Z",
@@ -98,15 +107,6 @@
           "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0036/Pokewilds-unsigned.ipa",
           "size": 63274101,
           "minOSVersion": "15.0"
-        },
-        {
-          "version": "0.10.197",
-          "buildVersion": "197",
-          "date": "2026-10-21T22:04:53Z",
-          "localizedDescription": "Typing: no stray iOS keyboard after SOLO, COPY and PASTE buttons\n\n- The classic setup panel's world-name LineEdit stays under the touch\n  setup screen (invisible, still tappable); with its own virtual keyboard\n  on, a tap landing there (choosing SOLO) opened the iOS keyboard. The\n  game opens its keyboard itself, so that one is off.\n- The names and the CO-OP text pages are not system text fields, so iOS\n  offers no paste: COPY and PASTE buttons while typing (setup screen and\n  the CO-OP typing pages), pasting as far as the field takes.",
-          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0034/Pokewilds-unsigned.ipa",
-          "size": 62841158,
-          "minOSVersion": "15.0"
         }
       ],
       "appPermissions": {
@@ -117,11 +117,11 @@
           "NSPhotoLibraryUsageDescription": "Not used by the game (Godot's default key)."
         }
       },
-      "version": "0.10.436",
-      "versionDate": "2026-10-23T23:02:38Z",
-      "versionDescription": "### Improvements\n- **Smoother near lots of Pokémon:** wild Pokémon, habitat Pokémon and eggs now run in the game's engine itself. The habitat check, every second and a half, takes about a twelfth of the time it did, so the game no longer hitches near habitats, and the wild Pokémon around you cost about a third as much every frame. A dedicated server running areas full of players and Pokémon no longer takes a long frame for that check either.\n- **Long-played worlds load faster:** the ground you have cut, dug, planted and built on is kept in a lighter form. Loading a world with a lot of it takes about 40% less time, saving it is quicker, and the short pause it caused once a second is gone. Old saves still load as before.\n\n### Fixes\n- **Dig sites no longer multiply when you load:** loading a world, or joining one in co-op, added a second set of the day's dig sites each time. A loaded world now has exactly the dig sites it was saved with.",
-      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0051/Pokewilds-unsigned.ipa",
-      "size": 63967633
+      "version": "0.10.438",
+      "versionDate": "2026-10-25T18:21:53Z",
+      "versionDescription": "### Fixes\n- **Wild Pokémon no longer flash on screen:** while you walk, a wild Pokémon could appear for a single frame in the middle of the screen, where there was none: a Lapras drawn whole in a river, a Squirtle's head in the grass. It was seen most on iPhone. Habitat Pokémon and eggs had the same flash and are fixed too.\n\n### Server and multiplayer\n- **Phones keep a log:** the game now writes a log on iPhone and Android too (on iPhone: Files app → PokeWilds → logs), so a disconnect can be looked into afterwards. When the game stops for more than 5 seconds during an online game, the log says so, which tells a frozen phone apart from a lost connection.",
+      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0052/Pokewilds-unsigned.ipa",
+      "size": 63967390
     }
   ],
   "news": []
