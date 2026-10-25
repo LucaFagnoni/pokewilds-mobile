@@ -5,6 +5,8 @@ the version description in Feather. Write it for players, not developers.
 
 ## Next version
 
+## 0.10.444
+
 ### Fixes
 - **Phones really keep a log now:** the log promised in 0.10.438 was never switched on for iPhone and Android, because of a mistake in the game's settings. It now is, so crash reports sent to a dedicated server (0.10.442) have something to send.
 
