@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.10.440",
+          "buildVersion": "440",
+          "date": "2026-10-25T19:05:20Z",
+          "localizedDescription": "### Fixes\n- **Friendly Pokémon can join your party online again:** on a dedicated server, a friendly Pokémon that wanted to join you, or one caught with a ball thrown in the field, was refused by the host every time after you had fought any battle, until you reconnected. The game sent the host the last battle you fought, against another Pokémon, and the host turned it down.",
+          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0053/Pokewilds-unsigned.ipa",
+          "size": 63967434,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "0.10.438",
           "buildVersion": "438",
           "date": "2026-10-25T18:21:53Z",
@@ -98,15 +107,6 @@
           "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0039/Pokewilds-unsigned.ipa",
           "size": 63274101,
           "minOSVersion": "15.0"
-        },
-        {
-          "version": "0.10.209",
-          "buildVersion": "209",
-          "date": "2026-10-21T23:48:10Z",
-          "localizedDescription": "Merge ios-zerotier",
-          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0036/Pokewilds-unsigned.ipa",
-          "size": 63274101,
-          "minOSVersion": "15.0"
         }
       ],
       "appPermissions": {
@@ -117,11 +117,11 @@
           "NSPhotoLibraryUsageDescription": "Not used by the game (Godot's default key)."
         }
       },
-      "version": "0.10.438",
-      "versionDate": "2026-10-25T18:21:53Z",
-      "versionDescription": "### Fixes\n- **Wild Pokémon no longer flash on screen:** while you walk, a wild Pokémon could appear for a single frame in the middle of the screen, where there was none: a Lapras drawn whole in a river, a Squirtle's head in the grass. It was seen most on iPhone. Habitat Pokémon and eggs had the same flash and are fixed too.\n\n### Server and multiplayer\n- **Phones keep a log:** the game now writes a log on iPhone and Android too (on iPhone: Files app → PokeWilds → logs), so a disconnect can be looked into afterwards. When the game stops for more than 5 seconds during an online game, the log says so, which tells a frozen phone apart from a lost connection.",
-      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0052/Pokewilds-unsigned.ipa",
-      "size": 63967390
+      "version": "0.10.440",
+      "versionDate": "2026-10-25T19:05:20Z",
+      "versionDescription": "### Fixes\n- **Friendly Pokémon can join your party online again:** on a dedicated server, a friendly Pokémon that wanted to join you, or one caught with a ball thrown in the field, was refused by the host every time after you had fought any battle, until you reconnected. The game sent the host the last battle you fought, against another Pokémon, and the host turned it down.",
+      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0053/Pokewilds-unsigned.ipa",
+      "size": 63967434
     }
   ],
   "news": []
