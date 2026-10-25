@@ -27,6 +27,10 @@ OriginalModsSingleton="*res://scripts/original_mods.gd"
 InputRouterSingleton="*res://scripts/input_router.gd"
 DedicatedServerSingleton="*res://scripts/dedicated_server.gd"
 
+[debug]
+# Phones too keep logs/godot.log (iOS: Files app > PokeWilds > logs).
+file_logging/enable_file_logging=true
+
 [display]
 window/size/viewport_width=320
 window/size/viewport_height=180

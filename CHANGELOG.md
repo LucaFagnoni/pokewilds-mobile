@@ -5,6 +5,12 @@ the version description in Feather. Write it for players, not developers.
 
 ## Next version
 
+### Fixes
+- **Wild Pokémon no longer flash on screen:** while you walk, a wild Pokémon could appear for a single frame in the middle of the screen, where there was none: a Lapras drawn whole in a river, a Squirtle's head in the grass. It was seen most on iPhone. Habitat Pokémon and eggs had the same flash and are fixed too.
+
+### Server and multiplayer
+- **Phones keep a log:** the game now writes a log on iPhone and Android too (on iPhone: Files app → PokeWilds → logs), so a disconnect can be looked into afterwards. When the game stops for more than 5 seconds during an online game, the log says so, which tells a frozen phone apart from a lost connection.
+
 ## 0.10.436
 
 ### Improvements

@@ -196,6 +196,7 @@ func send_encoded(peer:int, bytes:PackedByteArray)->Error:
     return OK
 
 var _flush_pending := false
+var _last_poll := 0
 func _flush_frame() -> void:
     _flush_pending = false
     for peer in peers.keys():
@@ -225,6 +226,9 @@ func _poll()->void:
             _add(id, socket)
     # Real time, independent of gameplay/battle speed and menu pauses.
     var now := Time.get_ticks_msec()
+    # A drop after a long stall is the game's freeze, not the network's.
+    if _last_poll > 0 and now - _last_poll > 5000 and not peers.is_empty(): print("ONLINE game stalled ", now - _last_poll, " ms")
+    _last_poll = now
     while not _turned_away.is_empty() and now >= int(_turned_away[0][1]):
         _turned_away.pop_front()[0].disconnect_from_host()
     for peer in peers.keys():

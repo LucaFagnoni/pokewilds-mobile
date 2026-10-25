@@ -28,6 +28,12 @@ var drawn := true
 var shown := {}
 var _free: Array[Sprite2D] = []
 
+func _init() -> void:
+    # The sprites are placed every frame, and a pooled one is taken up by a
+    # Pokemon somewhere else: interpolated, it was drawn for a frame between
+    # where its last Pokemon was and where its new one is (mid-screen).
+    physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
 func configure(owner_world: Node, wild: WildPopulation) -> void:
     world = owner_world
     population = wild
