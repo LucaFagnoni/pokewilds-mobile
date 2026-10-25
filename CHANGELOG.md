@@ -5,6 +5,9 @@ the version description in Feather. Write it for players, not developers.
 
 ## Next version
 
+### Server and multiplayer
+- **Crash reports reach the server:** a phone's own log cannot be opened on Android, so when you join a dedicated server your game now sends it the end of the log of your previous session, once. The server keeps it in `server_data/client_logs` and says so in its window. After a crash, joining again is enough for the server's owner to see what happened.
+
 ## 0.10.440
 
 ### Fixes

@@ -1572,6 +1572,7 @@ func _message(_peer:int,actor:String,packet:Dictionary)->void:
             var success=not area.is_empty() and await _flush_area(area)
             if success:await _send_state(_peer,actor)
             session.send_to(_peer,{"kind":"command_result","id":packet.id,"result":{"ok":success}});return
+        if packet.get("kind")=="client_log":_keep_client_log(_peer,actor,packet);return
         if packet.get("kind")=="profile_checkpoint":_checkpoint_request(_peer,actor,packet);return
         if packet.get("kind")=="state_request":_send_state(_peer,actor);return
         # Going to another area: its records first (area_service.gd then sends the area).
@@ -1663,6 +1664,36 @@ func _message(_peer:int,actor:String,packet:Dictionary)->void:
     _guest_game=packet.game
     profile_base=String(packet.get("profile_base",""))
     session.send_host({"kind":"area_request","area":packet.area})
+    _send_last_log()
+
+## A phone shows no log of its own (Android keeps it in private storage), and
+## a crash leaves nothing else: the end of the last run's log goes to the host
+## once per run, and a dedicated server keeps it (server_data/client_logs).
+const LOG_TAIL:=48000
+static var _log_sent:=false
+func _send_last_log()->void:
+    if _log_sent or Server.active:return
+    _log_sent=true
+    var runs:=Array(DirAccess.get_files_at("user://logs")).filter(func(file:String):return file.begins_with("godot2") and file.ends_with(".log"))
+    runs.sort()
+    var text:=FileAccess.get_file_as_string("user://logs/"+runs[-1]).right(LOG_TAIL) if not runs.is_empty() else ""
+    session.send_host({"kind":"client_log","os":OS.get_name(),"logging":FileAccess.file_exists("user://logs/godot.log"),"file":runs[-1] if not runs.is_empty() else "","text":text})
+
+var _logs_kept:Dictionary={}
+func _keep_client_log(peer:int,actor:String,packet:Dictionary)->void:
+    if not Server.active or _logs_kept.has(peer) or not packet.get("text") is String or String(packet.text).length()>LOG_TAIL:return
+    _logs_kept[peer]=true
+    var who:=String(session.players.get(peer,{}).get("profile",{}).get("name","PLAYER")).left(16)
+    var device:=String(packet.get("os","")).left(16)
+    if String(packet.text).is_empty():
+        print("SERVER ",who," (",device,") sent no log: logging ",("on, no earlier run" if packet.get("logging")==true else "off on that device"))
+        return
+    var path:=Paths.path("client_logs/%s-%s.log"%[actor.left(12),Time.get_datetime_string_from_system().replace(":","-")])
+    DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
+    var file:=FileAccess.open(path,FileAccess.WRITE)
+    if file==null:return
+    file.store_string("# %s on %s, %s\n%s"%[who,device,String(packet.get("file","")).validate_filename(),packet.text])
+    print("SERVER log of ",who,"'s last run (",device,") kept in ",ProjectSettings.globalize_path(path))
 
 func _broadcast_authority()->void:
     if not hosting or not is_instance_valid(service):return
