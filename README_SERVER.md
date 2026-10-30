@@ -1,6 +1,6 @@
-# Server dedicato PokeWilds (Windows)
+# Server dedicato PokeWilds (Windows, Linux, macOS)
 
-Il server dedicato tiene acceso un mondo co-op su un PC Windows, senza un
+Il server dedicato tiene acceso un mondo co-op su un PC Windows, Linux o Mac, senza un
 giocatore davanti: i telefoni (e i PC) si collegano con indirizzo IP e porta,
 in casa o da fuori, giocano quando vogliono, e il mondo resta sul server anche
 quando escono tutti.
@@ -47,6 +47,45 @@ il server resta verde. Altrimenti il telefono viene rifiutato con
 "DIFFERENT GAME VERSION: HOST ..., YOURS ...": le due versioni dicono quale
 build ha il server e quale il telefono, e va aggiornato il server (o il
 telefono). Le build fatte in locale non hanno codice e non vengono controllate.
+
+## Linux e macOS
+
+Stesso server, stesso gioco: cambia solo come si scarica e si avvia. Il resto
+di questa guida (indirizzi, ID e password, comandi, opzioni) vale uguale.
+
+- **Linux (x86_64)**: scarica
+  [PokeWilds-Server-linux-x86_64.tar.gz](https://github.com/LucaFagnoni/pokewilds-mobile/releases/latest/download/PokeWilds-Server-linux-x86_64.tar.gz),
+  poi in un terminale:
+
+  ```
+  mkdir PokeWilds-Server && tar -xzf PokeWilds-Server-linux-x86_64.tar.gz -C PokeWilds-Server
+  cd PokeWilds-Server && ./start_server.sh
+  ```
+
+- **macOS (Apple silicon e Intel)**: scarica
+  [PokeWilds-Server-macos.zip](https://github.com/LucaFagnoni/pokewilds-mobile/releases/latest/download/PokeWilds-Server-macos.zip),
+  estrailo e dal Terminale, nella cartella estratta, scrivi `./start_server.sh`.
+  L'app non è firmata da Apple: se macOS la blocca ("sviluppatore non
+  identificato"), vai in **Impostazioni di Sistema > Privacy e sicurezza** e
+  premi **Apri comunque**, oppure fai clic destro su `PokeWilds.app` >
+  **Apri** una volta. Alla prima partenza macOS chiede se `PokeWilds` può
+  ricevere connessioni in entrata: rispondi **Consenti**.
+
+`start_server.sh` è il fratello di `start_server.bat`: stesse opzioni
+(`./start_server.sh --world Isola --size L`), stessi comandi scritti nel
+terminale, e **Ctrl+C** (o chiudere il terminale) salva il mondo e spegne il
+server. Se il server esce con `restart` riparte da solo. Su macOS tiene
+sveglio il Mac finché è acceso. I mondi stanno in `server_data` accanto allo
+script (anche su macOS, non dentro l'app).
+
+Non c'è il firewall di Windows da aprire a mano, ma se il PC ne ha uno
+(`ufw`, `firewalld`) la porta **TCP 54555** deve essere raggiungibile, per
+esempio `sudo ufw allow 54555/tcp`. Su Linux serve una distribuzione del 2022
+o più recente (glibc 2.35).
+
+Il gioco per computer (PokeWilds-win64.zip, PokeWilds-macos.zip,
+PokeWilds-linux-x86_64.tar.gz) è lo stesso programma senza il lanciatore:
+parte come gioco, e fa da server solo se gli si dà `--headless --server`.
 
 ## Se "From outside" dice altro
 
@@ -127,7 +166,7 @@ RESTARTING IN 30 S"), poi il server salva e chiude; sul telefono compare
 "THE SERVER WAS SHUT DOWN." oppure "SERVER RESTARTING. TRY AGAIN IN A MOMENT.".
 Se non c'è nessuno, o con `stop 0` / Ctrl+C, si spegne subito. `cancel` ferma
 il conto alla rovescia. `restart` riparte da solo solo se il server è stato
-avviato con `start_server.bat` (che lo rilancia quando esce con il codice 75).
+avviato con `start_server.bat` o `start_server.sh` (che lo rilancia quando esce con il codice 75).
 
 Comandi che puoi scrivere nella finestra:
 
@@ -157,7 +196,7 @@ movimento dei Pokémon.
 
 ## Opzioni
 
-Si possono dare a `start_server.bat` (per esempio
+Si possono dare a `start_server.bat` o `start_server.sh` (per esempio
 `start_server.bat --world Isola --size L`) o scrivere in `server.cfg`:
 
 | Opzione | Significato | Predefinito |

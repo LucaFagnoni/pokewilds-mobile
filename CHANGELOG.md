@@ -5,6 +5,9 @@ the version description in Feather. Write it for players, not developers.
 
 ## Next version
 
+### New
+- **PokeWilds on your computer:** the game now also comes for Windows, Mac and Linux (PokeWilds-win64.zip, PokeWilds-macos.zip, PokeWilds-linux-x86_64.tar.gz), and the dedicated server for Linux and Mac too (PokeWilds-Server-linux-x86_64.tar.gz, PokeWilds-Server-macos.zip, started with start_server.sh). On a Mac, right-click PokeWilds.app and choose Open the first time, because the app is not signed by Apple.
+
 ## 0.10.446
 
 ### Server and multiplayer

@@ -1,0 +1,36 @@
+name: Stamp build
+description: >
+  Compat id test, then the build id, compat id and release version stamps and the
+  lobby list address in project/ (the server job's steps, for the Linux and macOS
+  jobs). Run after the JSON minify step.
+inputs:
+  version:
+    description: The release version ("" on pull requests)
+    default: ""
+  lobby:
+    description: The LOBBY_SERVER secret
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Compat id test
+      shell: bash
+      run: python3 server/compat_id_test.py
+
+    - name: Stamp build id and version
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        echo "$GITHUB_SHA" > project/build_id.txt
+        python3 tools/compat_id.py project > project/compat_id.txt
+        if [ -n "$VERSION" ]; then echo "$VERSION" > project/build_version.txt; fi
+        echo "::notice::compat id $(cat project/compat_id.txt), version ${VERSION:-none}"
+
+    - name: Lobby list address
+      shell: bash
+      env:
+        LOBBY_SERVER: ${{ inputs.lobby }}
+      run: |
+        if [ -n "$LOBBY_SERVER" ]; then printf '%s\n' "$LOBBY_SERVER" > project/lobby_server.txt
+        else echo "::warning::No LOBBY_SERVER secret: this server cannot be listed online"; fi
