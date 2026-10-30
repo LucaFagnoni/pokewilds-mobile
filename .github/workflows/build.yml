@@ -802,8 +802,12 @@ jobs:
       - name: Build stripped engine (macOS universal) into the template
         working-directory: godot-src
         run: |
-          "$RUNNER_TEMP/scons/bin/scons" platform=macos arch=universal target=template_release profile="$ENGINE_PROFILE" \
-            module_upnp_enabled=yes cache_path="$HOME/.scons_cache" -j"$(sysctl -n hw.ncpu)"
+          # SCons builds one arch at a time (macos/detect.py: x86_64, arm64); lipo joins them.
+          for arch in arm64 x86_64; do
+            "$RUNNER_TEMP/scons/bin/scons" platform=macos arch=$arch target=template_release profile="$ENGINE_PROFILE" \
+              module_upnp_enabled=yes cache_path="$HOME/.scons_cache" -j"$(sysctl -n hw.ncpu)"
+          done
+          lipo -create bin/godot.macos.template_release.arm64 bin/godot.macos.template_release.x86_64 -output bin/godot.macos.template_release.universal
           # The official template is a zip of macos_template.app: its binary
           # (the export copies the release one) is replaced by ours.
           rm -rf "$RUNNER_TEMP/tpl" && mkdir "$RUNNER_TEMP/tpl"
