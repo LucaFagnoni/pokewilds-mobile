@@ -8,7 +8,8 @@
 
     python server/smoke_test.py GODOT            (GODOT = editor binary, runs project/)
     python server/smoke_test.py PokeWilds.console.exe --exe
-    (--port N: the server's port, 54777 by default; another beside other servers)
+    (--port N: the server's port, 54777 by default; another beside other servers;
+     --quick: only the server runs, not the checks before them)
 
 Run from the repository root. Exits 0 on success."""
 import hashlib, json, os, re, subprocess, sys, tempfile, time
@@ -54,7 +55,7 @@ def send(process, line):
 
 
 # The address parser and the outside-address check first: seconds, not minutes.
-if "--exe" not in sys.argv:
+if "--exe" not in sys.argv and "--quick" not in sys.argv:
     check = subprocess.run(command + ["--headless", "-s", os.path.abspath("server/address_check.gd")], capture_output=True, text=True, errors="replace")
     if "ADDRESS CHECK: 0 failed" not in check.stdout: print(check.stdout[-2000:], check.stderr[-2000:]); print("SMOKE FAIL: address check"); sys.exit(1)
     print("address check ok")
@@ -129,6 +130,9 @@ try:
     world_id = actor_of("old")[0]
     if "SERVER made area 1,0" not in text(run): fail("the server did not make the new area")
     print("client joined; the server made the new area it walked into")
+    # Every area is an AreaSim of the server's, the one players start in too.
+    if "SERVER area 0,0 in play" not in text(run): fail("the server did not run the first area's Pokemon")
+    print("the server ran the first area's Pokemon")
     stop_server(run)
     world = os.path.join(server_data, "online_worlds", world_id, "world.json")
     if "player/" + device_actor("old") not in json.load(open(world, encoding="utf-8"))["payload"]: fail("the client's player is not in the saved world")

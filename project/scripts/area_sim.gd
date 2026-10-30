@@ -3,8 +3,8 @@ extends RefCounted
 ## from the area's snapshot (the terrain cache) and the world records (its
 ## overlays, as the journal has them), then kept equal to them, change by
 ## change (apply_record). The rules run on it (rules/, coop_rules_runtime.gd)
-## for the players who are there; the area the host itself plays in is its
-## World's own AreaState instead.
+## for the players who are there; the area a phone host itself plays in is
+## its World's own AreaState instead. A dedicated server holds every area so.
 ##
 ## A dedicated server that is the authority of every area's Pokemon
 ## (coop_population_authority.gd) also runs this area's wild and habitat

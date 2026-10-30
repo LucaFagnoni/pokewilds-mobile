@@ -118,8 +118,9 @@ func _flush_area(area:String)->bool:
     var owner=String(state.authority.get(area,""))
     if owner.is_empty():return true
     if owner==session.actor:
-        # An area a server runs without drawing it is all in the records.
-        if area!=_area():return true
+        # An area a server runs without drawing it is all in the records, as
+        # is every area of a dedicated server (coop_population_authority.gd).
+        if area!=_area() or Server.active:return true
         # In a frame of its own: the area's Pokemon folded in and the area
         # captured come to several ms, on top of the request that asked for
         # it (its records sent to the player): together 15-20 ms.
@@ -1296,21 +1297,13 @@ func game_started()->bool:
     # A phone stops hosting when the screen locks or the player switches apps.
     if OS.has_feature("mobile"):show_notice("","hosting")
     endpoints=preload("res://scripts/coop_join_code.gd").local_endpoints()
-    var entry=service.areas.enter(session.actor,_area());area_authority=String(entry.get("authority",""));area_epoch=int(entry.get("epoch",0));visuals.set_area(_area())
+    # A dedicated server's player is in no area: its own is run as an AreaSim
+    # like any other (coop_population_authority.gd), never by its World.
+    if not Server.active:
+        var entry=service.areas.enter(session.actor,_area());area_authority=String(entry.get("authority",""));area_epoch=int(entry.get("epoch",0));visuals.set_area(_area())
     if not await wild.initialize_ids():return false
     await checkpoint_player()
     _travelling_box_enter.call_deferred()
-    return true
-
-## Dedicated server: true while no player is in the server's own area. Its
-## wild and habitat Pokemon then wait where they are, as they do in any area
-## no player is in, instead of being moved (and every move sent to every
-## player) for no one to see.
-func nobody_here()->bool:
-    if not Server.active or not hosting:return false
-    var area:=_area()
-    for actor in state.members:
-        if actor!=session.actor and String(state.members[actor].get("area",""))==area:return false
     return true
 
 func _area()->String:
@@ -1320,6 +1313,9 @@ func publish_current(own_population:bool=false)->bool:
     # The one who places a new area's Pokemon sends them, authority or not
     # (a server may be every area's: the host checks it is that one).
     if not own_population and not area_authority.is_empty() and area_authority!=session.actor:return true
+    # A dedicated server's World made the world's first area, and that is all:
+    # once saved, the area is an AreaSim's like any other, kept in the records.
+    if Server.active and state.records.has("area/"+_area()):return true
     # Do not put an optimistic, not-yet-paid placement into an area snapshot.
     # This waits only for this player's action, never for other players to stop.
     while building.busy or population.busy:
@@ -1697,7 +1693,8 @@ func _keep_client_log(peer:int,actor:String,packet:Dictionary)->void:
 
 func _broadcast_authority()->void:
     if not hosting or not is_instance_valid(service):return
-    area_authority=String(state.authority.get(_area(),""));area_epoch=int(service.areas.epochs.get(_area(),0))
+    # A dedicated server's World runs no area, whoever's authority it is.
+    if not Server.active:area_authority=String(state.authority.get(_area(),""));area_epoch=int(service.areas.epochs.get(_area(),0))
     for peer in session.players:
         if peer!=1:session.send_to(peer,{"kind":"area_authorities","owners":state.authority,"epochs":service.areas.epochs})
 

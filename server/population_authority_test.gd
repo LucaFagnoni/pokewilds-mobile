@@ -72,7 +72,6 @@ class FakeGame extends Node:
     var sent: Array = []
     var serial := 0
     func _area() -> String: return "0,0"
-    func nobody_here() -> bool: return true
     func _id() -> String:
         serial += 1
         return "t%d" % serial

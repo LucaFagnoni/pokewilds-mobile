@@ -2,8 +2,9 @@ extends Node
 ## A dedicated server as the authority of the Pokemon of every area its
 ## players are in (server.cfg population_authority=server, the default on a
 ## dedicated server: coop_state.gd fixed_authority makes it the authority of
-## every area). Its own area is its World's, which runs it as before; any other
-## is an AreaSim of the rules runtime (coop_rules_runtime.gd sims): its wild and
+## every area). Each is an AreaSim of the rules runtime (coop_rules_runtime.gd
+## sims), the one players start in as much as any other: the server has no
+## World of its own. Its wild and
 ## habitat Pokemon and eggs read from the records (area_sim.gd) and run there by
 ## the code a World runs them with (wild_population.gd, habitat_population.gd,
 ## rules/population_rules.gd), every such area in turn within BUDGET_USEC of a
@@ -97,13 +98,12 @@ func configure(coordinator:Node)->void:
     game=coordinator
     process_mode=Node.PROCESS_MODE_ALWAYS
 
-## The areas whose Pokemon this authority runs in AreaSims now: those players
-## are in, but the host's own.
+## The areas whose Pokemon this authority runs in AreaSims now: those players are in.
 func areas()->Array:
     var found:Array=[]
     for actor in game.state.members:
         var area:=String(game.state.members[actor].get("area",""))
-        if not area.is_empty() and area!=game._area() and not area in found:found.append(area)
+        if not area.is_empty() and not area in found:found.append(area)
     found.sort()
     return found
 
@@ -111,7 +111,6 @@ func _process(delta:float)->void:
     if not enabled or not is_instance_valid(game) or not game.active or not game.hosting or not game.main.started:return
     var started:=Time.get_ticks_usec()
     _worked=false
-    _own_events()
     var occupied:=areas()
     for area in _beats.keys():
         if not area in occupied or game.rules.sims.get(area)!=_beats[area].sim:_beats.erase(area)
@@ -195,20 +194,6 @@ func _events(area:String,sim,beat:Beat)->void:
     var taken:Array=[]
     for player in sim.players.by_actor.values():taken.append(Vector2i(int(player.x),int(player.y)))
     if _step_events(area,sim.state,taken):beat.events_dirty=true
-
-## The server's own area, its World's (whose player never plays, so its
-## update never moves them): its Megas and Mega Gengar step there too, on the
-## World's AreaState, while players are there; coop_special_events.gd sends
-## them as that area's authority.
-func _own_events()->void:
-    if game.nobody_here():return
-    var world=game.main.world
-    if not world.generated or world.exact_world==null or world.active_area_id!="OVERWORLD":return
-    var taken:Array=[]
-    for actor in game.visuals.last_packets:
-        var packet:Dictionary=game.visuals.last_packets[actor]
-        if packet.get("area")==game._area() and packet.get("layer")=="OVERWORLD":taken.append(Vector2i(int(packet.get("cell_x",0)),int(packet.get("cell_y",0))))
-    _step_events(game._area(),world.area,taken)
 
 ## Each Mega whose time has come, and Mega Gengar at night, steps (as
 ## biome_megas.gd update and source_forest_boss.gd update_visibility do in a
@@ -306,6 +291,7 @@ func _scan(area:String,beat:Beat,deadline:int)->bool:
 ## The area's Pokemon are in: the host's records are what they are, so only
 ## what changes from now on goes out (once their signatures are taken: _sign).
 func _loaded(sim,beat:Beat)->void:
+    print("SERVER area ",sim.state.area," in play: ",sim.state.wild.size()," wild Pokemon run here")
     beat.unsigned=sim.state.wild.records.keys()
     sim.state.wild.take_dirty()
     sim.players.marked.clear()
