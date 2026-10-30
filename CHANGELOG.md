@@ -5,6 +5,12 @@ the version description in Feather. Write it for players, not developers.
 
 ## Next version
 
+### Server and multiplayer
+- **The server is no longer a player:** a dedicated server used to be the whole game running with an invisible player of its own, standing at the spawn. Now it only keeps the world: it has no character, is never counted among the players and never shows up anywhere. Every area is run the same way, the one you start in included, so wild Pokémon, habitats, eggs, Megas and hordes behave there as everywhere else.
+- **New players start at the world's spawn:** joining a dedicated server for the first time now puts you on the spawn point of the world's first area, instead of next to the server's invisible player.
+- **A new world is ready in seconds:** the server no longer builds the first area of a new world before it opens. The first area is made when the first player arrives, like every new area (you see "THIS AREA IS BEING CREATED" for a moment), so the server starts at once even for a large world.
+- **Your server's world carries over:** the first time the new server opens a world, it removes the old invisible SERVER player from it. Players, their Pokémon and everything built stay as they were; there is nothing to do.
+
 ## 0.10.446
 
 ### Server and multiplayer
