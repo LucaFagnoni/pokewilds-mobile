@@ -19,6 +19,15 @@
       "screenshots": [],
       "versions": [
         {
+          "version": "0.10.460",
+          "buildVersion": "460",
+          "date": "2026-10-30T02:52:51Z",
+          "localizedDescription": "### New\n- **PokeWilds on your computer:** the game now also comes for Windows, Mac and Linux (PokeWilds-win64.zip, PokeWilds-macos.zip, PokeWilds-linux-x86_64.tar.gz), and the dedicated server for Linux and Mac too (PokeWilds-Server-linux-x86_64.tar.gz, PokeWilds-Server-macos.zip, started with start_server.sh). On a Mac, right-click PokeWilds.app and choose Open the first time, because the app is not signed by Apple.\n- **Keyboard and mouse on your computer:** play with WASD or the arrows, Z or Space to act, X or Q to go back, Shift to run, Enter for the menu, C / V to change materials and pages, F for the field move wheel (or hold the right mouse button and aim with the mouse), R to throw, M for the map, P for the Pokedex, B to build and T to chat. The original PokeWilds keys (arrows, Z, X, Enter) still work. Click menu rows like you would tap them, drag the map, and use the wheel to zoom. Change any key or controller button in OPTIONS > CONTROLS. On a phone, the on-screen buttons now hide while you use a controller or keyboard and come back when you touch the screen.\n\n### Server and multiplayer\n- **The server is no longer a player:** a dedicated server used to be the whole game running with an invisible player of its own, standing at the spawn. Now it only keeps the world: it has no character, is never counted among the players and never shows up anywhere. Every area is run the same way, the one you start in included, so wild Pokémon, habitats, eggs, Megas and hordes behave there as everywhere else.\n- **New players start at the world's spawn:** joining a dedicated server for the first time now puts you on the spawn point of the world's first area, instead of next to the server's invisible player.\n- **A new world is ready in seconds:** the server no longer builds the first area of a new world before it opens. The first area is made when the first player arrives, like every new area (you see \"THIS AREA IS BEING CREATED\" for a moment), so the server starts at once even for a large world.\n- **Your server's world carries over:** the first time the new server opens a world, it removes the old invisible SERVER player from it. Players, their Pokémon and everything built stay as they were; there is nothing to do.",
+          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0062/Pokewilds-unsigned.ipa",
+          "size": 63974212,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "0.10.446",
           "buildVersion": "446",
           "date": "2026-10-25T23:04:55Z",
@@ -98,15 +107,6 @@
           "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0043/Pokewilds-unsigned.ipa",
           "size": 63324214,
           "minOSVersion": "15.0"
-        },
-        {
-          "version": "0.10.236",
-          "buildVersion": "236",
-          "date": "2026-10-22T11:23:12Z",
-          "localizedDescription": "Merge: cheaper weather drawing, deep forest shade loaded on a thread",
-          "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0042/Pokewilds-unsigned.ipa",
-          "size": 63305947,
-          "minOSVersion": "15.0"
         }
       ],
       "appPermissions": {
@@ -117,11 +117,11 @@
           "NSPhotoLibraryUsageDescription": "Not used by the game (Godot's default key)."
         }
       },
-      "version": "0.10.446",
-      "versionDate": "2026-10-25T23:04:55Z",
-      "versionDescription": "### Server and multiplayer\n- **The server opens its port on the router by itself:** the Windows server was built without UPnP, so it never even tried, and said \"The router did not open the port by itself (UPnP off?)\" whatever the router could do. With UPnP on in the router, players from outside your Wi-Fi can now join without forwarding the port by hand. Set `open_router_port=false` in server.cfg to keep it closed.\n- **A clean server start:** the server no longer prints a physics WARNING and a shader ERROR every time it starts. Neither was harmful; the shader one came from the field move wheel and is fixed for phones too.",
-      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0056/Pokewilds-unsigned.ipa",
-      "size": 63968043
+      "version": "0.10.460",
+      "versionDate": "2026-10-30T02:52:51Z",
+      "versionDescription": "### New\n- **PokeWilds on your computer:** the game now also comes for Windows, Mac and Linux (PokeWilds-win64.zip, PokeWilds-macos.zip, PokeWilds-linux-x86_64.tar.gz), and the dedicated server for Linux and Mac too (PokeWilds-Server-linux-x86_64.tar.gz, PokeWilds-Server-macos.zip, started with start_server.sh). On a Mac, right-click PokeWilds.app and choose Open the first time, because the app is not signed by Apple.\n- **Keyboard and mouse on your computer:** play with WASD or the arrows, Z or Space to act, X or Q to go back, Shift to run, Enter for the menu, C / V to change materials and pages, F for the field move wheel (or hold the right mouse button and aim with the mouse), R to throw, M for the map, P for the Pokedex, B to build and T to chat. The original PokeWilds keys (arrows, Z, X, Enter) still work. Click menu rows like you would tap them, drag the map, and use the wheel to zoom. Change any key or controller button in OPTIONS > CONTROLS. On a phone, the on-screen buttons now hide while you use a controller or keyboard and come back when you touch the screen.\n\n### Server and multiplayer\n- **The server is no longer a player:** a dedicated server used to be the whole game running with an invisible player of its own, standing at the spawn. Now it only keeps the world: it has no character, is never counted among the players and never shows up anywhere. Every area is run the same way, the one you start in included, so wild Pokémon, habitats, eggs, Megas and hordes behave there as everywhere else.\n- **New players start at the world's spawn:** joining a dedicated server for the first time now puts you on the spawn point of the world's first area, instead of next to the server's invisible player.\n- **A new world is ready in seconds:** the server no longer builds the first area of a new world before it opens. The first area is made when the first player arrives, like every new area (you see \"THIS AREA IS BEING CREATED\" for a moment), so the server starts at once even for a large world.\n- **Your server's world carries over:** the first time the new server opens a world, it removes the old invisible SERVER player from it. Players, their Pokémon and everything built stay as they were; there is nothing to do.",
+      "downloadURL": "https://github.com/LucaFagnoni/pokewilds-mobile/releases/download/build-0062/Pokewilds-unsigned.ipa",
+      "size": 63974212
     }
   ],
   "news": []
