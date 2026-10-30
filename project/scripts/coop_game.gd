@@ -1884,6 +1884,10 @@ func _area_ready(actor:String,_area_name:String,_metadata:Dictionary,bytes:Packe
     file.store_buffer(decoded.cache);file.flush();var error=file.get_error();file.close()
     if error!=OK or DirAccess.rename_absolute(path+".pending",path)!=OK:_failure("ONLINE CACHE COULD NOT SAVE");return
     pending_game=_guest_game;_guest_game={}
+    # The world this player loads is this area's: its seed and size, whatever
+    # the host's game said (a dedicated server's first game for a player has
+    # none: the area is made after it, for them).
+    pending_game["world_seed"]=decoded.seed;pending_game["world_size"]=decoded["size"]
     pending_game["crafting_state"]=Snapshot.merge(wild.overlay(_area_name,population.overlay(_area_name,building.overlay(_area_name,decoded.shared,shared_records),shared_records),shared_records),pending_game.get("coop_personal",{}))
     if _metadata.get("population_pending",false):pending_game.crafting_state=_placing_population(_area_name,pending_game.crafting_state)
     pending_game.erase("coop_personal")

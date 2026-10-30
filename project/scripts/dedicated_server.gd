@@ -43,7 +43,8 @@ static var active:=false
 var joining:=""
 var _quit_after_join:=false
 var _travel:=false
-var _see:=0
+## --see N: wait to see N other players (0: none) once in, then say who and how many wild Pokemon.
+var _see:=-1
 var _area_job:=""
 var port:=JoinCode.PORT
 var world_name:="PokeWilds"
@@ -75,7 +76,7 @@ func _init()->void:
     joining="" if active else _arg(args,"--join","")
     _quit_after_join="--quit-after-join" in args
     _travel="--travel" in args
-    _see=int(_arg(args,"--see","0"))
+    _see=int(_arg(args,"--see","-1"))
     _area_job="" if active else _arg(args,"--generate-area","")
     if not _area_job.is_empty():_use_data(_area_job.get_base_dir());return
     if not active and joining.is_empty():return
@@ -520,6 +521,15 @@ func _join()->void:
         if Time.get_ticks_msec()>deadline or (not coop.active and not coop._choosing):_fail(String(main.menu_status.text));return
         await get_tree().process_frame
     print("CLIENT joined world ",coop.world_id," in area ",coop._area()," with ",main.caught_pokemon.size()," pokemon as ",coop.session.actor.left(12))
+    if _see>=0:
+        # Until that many other players are seen here, then a moment more:
+        # who is seen then (the smoke test's players see each other, never the
+        # server), and how many of the area's wild Pokemon (the server's, all).
+        var until:=Time.get_ticks_msec()+180000
+        while coop.visuals.actors.size()<_see and Time.get_ticks_msec()<until:await get_tree().process_frame
+        await get_tree().create_timer(3.0).timeout
+        print("CLIENT sees ",coop.visuals.actors.size()," other players: ",", ".join(coop.visuals.actors.keys().map(func(actor):return String(actor).left(12))))
+        print("CLIENT sees ",main.world.wild_pokemon.size()," wild Pokemon in area ",coop._area())
     if _travel:
         # Walk off the east edge into an area nobody has been to yet.
         main.edge_travel_busy=true
@@ -527,13 +537,6 @@ func _join()->void:
         main.edge_travel_busy=false
         if not is_instance_valid(main) or main.current_world_grid!=Vector2i(1,0):_fail("travel to the next area failed");return
         print("CLIENT travelled to area ",coop._area())
-    if _see>0:
-        # Until that many other players are seen here, then a moment more:
-        # who is seen then (the smoke test's players see each other, never the server).
-        var until:=Time.get_ticks_msec()+180000
-        while coop.visuals.actors.size()<_see and Time.get_ticks_msec()<until:await get_tree().process_frame
-        await get_tree().create_timer(3.0).timeout
-        print("CLIENT sees ",coop.visuals.actors.size()," other players: ",", ".join(coop.visuals.actors.keys().map(func(actor):return String(actor).left(12))))
     if not _quit_after_join:return
     # Let this player's first checkpoint reach the host before leaving.
     await coop.checkpoint_player()

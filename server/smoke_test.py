@@ -129,6 +129,15 @@ def device_actor(device):
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def same_wild(name, run, area="0,0"):
+    """The player saw the area's wild Pokemon as the server runs them (a few
+    may come or go in the moment between the two counts)."""
+    seen = re.search(rf"CLIENT sees (\d+) wild Pokemon in area {area}", text(name))
+    held = re.findall(rf"SERVER area {area} in play: (\d+) wild", text(run))
+    if not seen or not held or abs(int(seen.group(1)) - int(held[-1])) > 5:
+        fail(f"{name} sees {seen.group(1) if seen else 'no'} wild Pokemon in area {area}, the server runs {held[-1] if held else 'none'}")
+
+
 def saved_world(data, world_id):
     """The state of a world as its server saved it in world.json."""
     world = os.path.join(data, "online_worlds", world_id, "world.json")
@@ -162,14 +171,16 @@ try:
     join("intruder", ["--password", "wrong"], "WRONG PASSWORD")
     print("wrong shared password refused")
     # The client also walks into a new area, which the server must make for it.
-    join("old", ["--password", "smoke", "--travel", "--quit-after-join"], "CLIENT travelled to area 1,0")
+    join("old", ["--password", "smoke", "--see", "0", "--travel", "--quit-after-join"], "CLIENT travelled to area 1,0")
     world_id, area, _ = actor_of("old")
     if area != "0,0" or "SERVER made area 0,0" not in text(run): fail(f"the first player did not start in the first area made for them ({area})")
     if "SERVER made area 1,0" not in text(run): fail("the server did not make the new area")
     print("client joined; the server made the new area it walked into")
-    # Every area is an AreaSim of the server's, the one players start in too.
+    # Every area is an AreaSim of the server's, the one players start in too,
+    # and the first player's game holds that area as the server does.
     if "SERVER area 0,0 in play" not in text(run): fail("the server did not run the first area's Pokemon")
-    print("the server ran the first area's Pokemon")
+    same_wild("old", run)
+    print("the server ran the first area's Pokemon, and the player saw them all")
     stop_server(run)
     state = saved_world(server_data, world_id)
     players = sorted(key for key in state["records"] if key.startswith("player/"))
@@ -206,6 +217,7 @@ try:
     dana, evan = actor_of("dana")[2], actor_of("evan")[2]
     if f"CLIENT sees 1 other players: {evan}" not in text("dana") or f"CLIENT sees 1 other players: {dana}" not in text("evan"):
         fail("the two players in one area did not see each other, and only each other")
+    for name in ["dana", "evan"]: same_wild(name, run)
     for name, count in [("dana", 1), ("evan", 2)]:
         if not re.search(rf"SERVER join: \S+ \(ID {name}\) from \S+ \({count}/4\)", text(run)): fail(f"{name} was not counted as player {count} of 4")
     print("two players in one area see each other and nobody else; the server counts only them")
