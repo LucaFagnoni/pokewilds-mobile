@@ -561,8 +561,10 @@ jobs:
           sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
           sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
           python3 -m venv "$RUNNER_TEMP/scons" && "$RUNNER_TEMP/scons/bin/pip" -q install scons
+          # disable_path_overrides=no on every desktop engine: the server starts its own
+          # scene from the command line (server_launcher.ps1, start_server.sh).
           "$RUNNER_TEMP/scons/bin/scons" platform=windows use_mingw=yes arch=x86_64 target=template_release profile="$ENGINE_PROFILE" \
-            module_upnp_enabled=yes d3d12=no cache_path="$HOME/.scons_cache" -j"$(nproc)"
+            module_upnp_enabled=yes disable_path_overrides=no d3d12=no cache_path="$HOME/.scons_cache" -j"$(nproc)"
           tpl="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
           cp bin/godot.windows.template_release.x86_64.exe "$tpl/windows_release_x86_64.exe"
           cp bin/godot.windows.template_release.x86_64.console.exe "$tpl/windows_release_x86_64_console.exe"
@@ -699,7 +701,7 @@ jobs:
         working-directory: godot-src
         run: |
           "$RUNNER_TEMP/scons/bin/scons" platform=linuxbsd arch=x86_64 target=template_release profile="$ENGINE_PROFILE" \
-            module_upnp_enabled=yes x11=yes wayland=no alsa=yes pulseaudio=yes udev=yes dbus=no speechd=no fontconfig=no \
+            module_upnp_enabled=yes disable_path_overrides=no x11=yes wayland=no alsa=yes pulseaudio=yes udev=yes dbus=no speechd=no fontconfig=no \
             cache_path="$HOME/.scons_cache" -j"$(nproc)"
           tpl="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
           mkdir -p "$tpl"
@@ -805,7 +807,7 @@ jobs:
           # SCons builds one arch at a time (macos/detect.py: x86_64, arm64); lipo joins them.
           for arch in arm64 x86_64; do
             "$RUNNER_TEMP/scons/bin/scons" platform=macos arch=$arch target=template_release profile="$ENGINE_PROFILE" \
-              module_upnp_enabled=yes cache_path="$HOME/.scons_cache" -j"$(sysctl -n hw.ncpu)"
+              module_upnp_enabled=yes disable_path_overrides=no cache_path="$HOME/.scons_cache" -j"$(sysctl -n hw.ncpu)"
           done
           lipo -create bin/godot.macos.template_release.arm64 bin/godot.macos.template_release.x86_64 -output bin/godot.macos.template_release.universal
           # The official template is a zip of macos_template.app: its binary
