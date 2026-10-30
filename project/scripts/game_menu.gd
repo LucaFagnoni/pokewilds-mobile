@@ -208,6 +208,11 @@ func handle_game_menu_input(event: InputEvent) -> void:
                     close_game_menu()
                     main.get_viewport().set_input_as_handled()
                 return
+            # The map key (M, Select) closes the map it opened: main._input routes the map here first.
+            if event.is_action_pressed("map_open"):
+                close_game_menu()
+                main.get_viewport().set_input_as_handled()
+                return
             if event.is_action_pressed("confirm") and is_instance_valid(main.waypoint_ui):
                 main.waypoint_ui.begin_name()
                 main.get_viewport().set_input_as_handled()

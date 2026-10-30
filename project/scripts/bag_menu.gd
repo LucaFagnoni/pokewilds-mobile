@@ -242,7 +242,7 @@ func refresh_evolution_item_target() -> void:
     if main.caught_pokemon.is_empty():
         return
     var target := BattleEngine.item_evolution_target(main.caught_pokemon[main.pokemon_menu_index], main.overworld_evolution_item)
-    main.pokemon_menu_prompt.text = "%s: %s" % [main.overworld_evolution_item, ("ABLE." if main.touch_on() else "ABLE. A: USE") if not target.is_empty() else "NOT ABLE"]
+    main.pokemon_menu_prompt.text = "%s: %s" % [main.overworld_evolution_item, ("ABLE." if main.touch_on() else "ABLE. " + InputRouter.hint("A: USE")) if not target.is_empty() else "NOT ABLE"]
 
 func handle_evolution_item_input(event: InputEvent) -> void:
     if event.is_action_pressed("cancel") or event.is_action_pressed("start"):

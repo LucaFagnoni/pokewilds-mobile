@@ -10,7 +10,7 @@ const ROWS := [
     ["world_sound","WORLD SOUND EFFECTS","Adjust world movement and field effects."],
     ["cries","POKEMON CRIES","Adjust Pokemon cry volume."],
     ["footsteps","FOOTSTEP VOLUME","Adjust walking and water movement sounds."],
-    ["controls","CONTROLS","View controller and touch controls."],
+    ["controls","CONTROLS","View the controls. On a computer, change the keys."],
     ["button_layout","BUTTON LAYOUT","TYPE 1: Nintendo. TYPE 2: Xbox."],
     ["radial","RADIAL WHEEL","Enable the field move wheel."],
     ["ball_mechanics","THROWABLE POKEBALLS","RT: throw. Hold RT: balls. LT + RT: party."],
@@ -37,7 +37,7 @@ const ROWS := [
     ["touch_size","BUTTON SIZE","Size of the on-screen buttons."],
     ["touch_opacity","BUTTON OPACITY","How see-through the on-screen buttons are."],
     ["touch_theme","BUTTON THEME","Follow the system, or always light or dark buttons."],
-    ["touch_autohide","HIDE WITH CONTROLLER","Hide the on-screen buttons while a controller is connected."],
+    ["touch_autohide","HIDE WITH CONTROLLER","Hide the on-screen buttons while you play with a controller or keyboard. A touch shows them."],
     ["haptics","HAPTICS","Vibrate softly when you tap."],
     ["a_hint","A HINT","Show what A will do, at the bottom of the screen."],
     ["touch_move","MOVE BUTTONS","Drag the on-screen buttons where you like, then tap DONE."],
@@ -48,7 +48,7 @@ const CATEGORIES := [
     ["AUDIO", "Music, effects, cries and footsteps.", ["music","sound","world_sound","cries","footsteps","lofi_music"]],
     ["GAMEPLAY", "Speed, running, movement, wheels and throwing.", ["game_speed","text_speed","auto_run","diagonal","radial","ball_mechanics","zoom","weather_events"]],
     ["DISPLAY", "Frame, dark mode, minimap and visual extras.", ["frame","dark_mode","minimap","fps_counter","battery_hud","clock","battery_saver","battle_animations","held_emotes","shiny_sparkles","hd_emotes","circle_lights","map_waypoint"]],
-    ["CONTROLS", "On-screen buttons, vibration and button mapping.", ["touch_size","touch_opacity","touch_theme","touch_autohide","haptics","a_hint","touch_move","touch_reset","button_layout","controls"]],
+    ["CONTROLS", "On-screen buttons, vibration, button mapping and keys.",["touch_size","touch_opacity","touch_theme","touch_autohide","haptics","a_hint","touch_move","touch_reset","button_layout","controls"]],
     ["ONLINE", "Settings for the world you host.", ["horde_mode","raids_mode","players","autosave"]],
 ]
 const THEME_NAMES := ["SYSTEM","LIGHT","DARK"]
@@ -129,7 +129,7 @@ func configure(owner_main: Node) -> void:
     label(password_view,"PASSWORD",Vector2(14,10),Vector2(288,14),10)
     password_text=label(password_view,"",Vector2(14,34),Vector2(288,112),10)
     password_text.autowrap_mode=TextServer.AUTOWRAP_ARBITRARY
-    label(password_view,"" if main.touch_on() else "B: BACK",Vector2(14,154),Vector2(288,12),7)
+    label(password_view,"" if main.touch_on() else InputRouter.hint("B: BACK"),Vector2(14,154),Vector2(288,12),7)
     password_view.hide()
     hide()
 
@@ -183,7 +183,7 @@ func open() -> void:
         menu_rows.append(["players","LOBBY","Friends find this world in CO-OP > JOIN A GAME. Players, and the password of a private game."])
         menu_rows.append(["autosave","AUTOSAVE","OFF: the world is only written when you SAVE. Resets to ON each launch."])
     kick_index=0;players_page=false;kick_prompt.hide();action_prompt.hide();password_view.hide()
-    controls_page=false;selection=0;first=0
+    controls_page=false;listening="";selection=0;first=0
     all_rows=menu_rows
     show_categories()
     main.game_menu_box.hide();show();refresh()
@@ -263,6 +263,8 @@ func handle(event: InputEvent) -> void:
             return
         else:return
         refresh();return
+    # Waiting for a key: every key, even B's, is the answer.
+    if controls_page and listening!="":_controls_input(event);return
     if event.is_action_pressed("cancel") or event.is_action_pressed("start"):
         if controls_page: controls_page=false;refresh()
         elif category>=0: show_categories(_category_row(category));refresh()
@@ -275,7 +277,7 @@ func handle(event: InputEvent) -> void:
         if controls_page:control_index=wrapi(control_index+direction,0,control_rows.size())
         else:selection=wrapi(selection+direction,0,menu_rows.size())
         refresh();return
-    if controls_page:return
+    if controls_page:_controls_input(event);return
     var key:String=menu_rows[selection][0]
     if key.begins_with("@"):
         if event.is_action_pressed("confirm") or event.is_action_pressed("move_right"): open_category(int(key.substr(1)))
@@ -342,6 +344,7 @@ func refresh() -> void:
         if kick_index>=players.size() and main.coop_game.lobby_private:description.text="A: SHOW THIS WORLD'S PASSWORD\nB: BACK"
         else:description.text="Nobody else is in your world.\nB: BACK" if players.is_empty() else "A: KICK or KICK AND BAN\nB: BACK"
         if main.touch_on():description.text=description.text.replace("A: ","").replace("\nB: BACK","").replace("KICK or KICK AND BAN","TAP A PLAYER TO KICK OR BAN").replace("SHOW THIS WORLD'S PASSWORD","TAP SHOW PASSWORD")
+        description.text=InputRouter.hint(description.text)
         return
     cursor.visible=true
     title.text="CONTROLS" if controls_page else ("OPTIONS" if category<0 else "OPTIONS - "+String(CATEGORIES[category][0]))
@@ -357,7 +360,7 @@ func refresh() -> void:
         if actual>=count:continue
         if controls_page:
             label(row,control_rows[actual][0],Vector2.ZERO,Vector2(118,14),8)
-            var binding:=label(row,control_rows[actual][1],Vector2(120,0),Vector2(165,14),7)
+            var binding:=label(row,("PRESS A BUTTON" if listening_pad else "PRESS A KEY  (ESC: KEEP)") if actual==control_index and listening!="" else control_rows[actual][1],Vector2(120,0),Vector2(165,14),7)
             var width:=binding.get_theme_font("font").get_string_size(binding.text,HORIZONTAL_ALIGNMENT_LEFT,-1,7).x
             binding.scale.x=minf(1.0,165.0/maxf(1.0,width))
             continue
@@ -429,16 +432,51 @@ func refresh() -> void:
                 var choice:=label(row,choices[c],Vector2(x,0),Vector2(76 if choices.size()==2 else 52,14),7)
                 choice.add_theme_color_override("font_color",Color8(192,40,40) if c==selected else Color.BLACK)
                 if c==selected:choice.material=selected_text_material
-    description.text=(control_rows[index][2] if controls_page else menu_rows[index][2])+"\nB: BACK" 
+    var rebind:=controls_page and control_rows[index].size()>4
+    description.text=(control_rows[index][2] if controls_page else menu_rows[index][2])+InputRouter.hint("\nA: CHANGE   B: BACK" if rebind else "\nB: BACK")
+
+## OPTIONS > CONTROLS: A on a KEYBOARD or CONTROLLER row (a fifth entry: "key"
+## or "pad") waits for a key or a button (handle()), which becomes that
+## action's first and is saved in game.ini. Escape, or B on the touch screen, keeps it.
+var listening := ""
+var listening_pad := false
+
+func _controls_input(event: InputEvent) -> void:
+    if listening!="":
+        var keep:bool=(event is InputEventKey and event.physical_keycode==KEY_ESCAPE) or (event is InputEventAction and event.is_action_pressed("cancel"))
+        var code:=-1
+        if not listening_pad and event is InputEventKey and event.pressed and not event.echo:code=event.physical_keycode
+        elif listening_pad and event is InputEventJoypadButton and event.pressed:code=event.button_index
+        if keep and event.is_pressed():listening=""
+        elif code>=0:
+            input_router.bind(listening,code,listening_pad)
+            Settings.save_bindings("pad" if listening_pad else "keys",input_router.bindings(listening_pad))
+            listening=""
+        else:return
+        build_controls();refresh()
+        return
+    if not event.is_action_pressed("confirm") or control_rows[control_index].size()<5:return
+    var action:String=control_rows[control_index][3]
+    if action=="@reset":
+        for pad in [false,true]:
+            input_router.load_bindings({},pad);Settings.save_bindings("pad" if pad else "keys",{})
+        build_controls()
+    else:
+        listening=action;listening_pad=control_rows[control_index][4]=="pad"
+    refresh()
 
 func build_controls() -> void:
     control_rows.clear()
+    var desktop:=not TouchUI.touch_runtime()
+    # Keys on a computer, or on a phone once a real keyboard was used; buttons while a controller is connected.
+    var keyboard:bool=input_router.keyboard_seen
+    var controller:bool=input_router.controller_connected
     var touch_map:Dictionary=preload("res://scripts/touch_controls.gd").ACTIONS
     for action in ["move_up","move_down","move_left","move_right","confirm","cancel","run","start","quit_menu","shoulder_left","shoulder_right","zoom_in","zoom_out","field_move_wheel","ball_mechanics","pokedex","map_open","build_menu","battle_catch"]:
         var keys:Array[String]=[];var pads:Array[String]=[];var touches:Array[String]=[]
         for event in InputMap.action_get_events(action):
             if event is InputEventKey:keys.append(OS.get_keycode_string(event.physical_keycode if event.physical_keycode else event.keycode))
-            elif event is InputEventMouseButton:keys.append("WHEEL UP" if event.button_index==MOUSE_BUTTON_WHEEL_UP else "WHEEL DOWN" if event.button_index==MOUSE_BUTTON_WHEEL_DOWN else event.as_text())
+            elif event is InputEventMouseButton:keys.append({MOUSE_BUTTON_WHEEL_UP:"WHEEL UP",MOUSE_BUTTON_WHEEL_DOWN:"WHEEL DOWN",MOUSE_BUTTON_RIGHT:"HOLD RIGHT MOUSE"}.get(event.button_index,event.as_text()))
             elif event is InputEventJoypadButton:pads.append(joy_button_name(event.button_index))
             elif event is InputEventJoypadMotion:
                 if event.axis==JOY_AXIS_LEFT_X:pads.append("L-STICK LEFT" if event.axis_value<0 else "L-STICK RIGHT")
@@ -449,15 +487,29 @@ func build_controls() -> void:
             if action in main.touch_controls.button_actions(button):touches.append(main.touch_controls.face_letter(button))
         if action.begins_with("move_"):touches=["D-pad / left stick"]
         var name:String=action.replace("_"," ").to_upper()
-        control_rows.append(["CONTROLLER"," / ".join(pads) if not pads.is_empty() else "--",name])
-        control_rows.append(["TOUCH"," / ".join(touches) if not touches.is_empty() else "--",name])
+        # Keys and connected buttons can be changed; a computer shows no touch buttons.
+        if keyboard:control_rows.append(["KEYBOARD"," / ".join(keys).to_upper() if not keys.is_empty() else "--",name,action,"key"])
+        control_rows.append(["CONTROLLER"," / ".join(pads) if not pads.is_empty() else "--",name]+([action,"pad"] if controller else []))
+        if not desktop:control_rows.append(["TOUCH"," / ".join(touches) if not touches.is_empty() else "--",name])
         if action == "pokedex":
+            if keyboard:control_rows.append(["KEYBOARD"," / ".join(keys).to_upper(),"BATTLE: THROW LAST BALL"])
             control_rows.append(["CONTROLLER"," / ".join(pads),"BATTLE: THROW LAST BALL"])
-            control_rows.append(["TOUCH"," / ".join(touches),"BATTLE: THROW LAST BALL"])
+            if not desktop:control_rows.append(["TOUCH"," / ".join(touches),"BATTLE: THROW LAST BALL"])
 
     control_rows.append(["CONTROLLER","LT + RT","PARTY WHEEL (THROWABLE POKEBALLS ON)"])
     control_rows.append(["CONTROLLER","TAP RT","THROW / RECALL"])
     control_rows.append(["CONTROLLER","HOLD RT","BALL WHEEL"])
+    control_rows.append(["CONTROLLER","LB / RB","OPEN FIELD MOVE WHEEL: PREVIOUS / NEXT"])
+    if keyboard:
+        control_rows.append(["KEYBOARD","%s / %s" % [InputRouter.key_name("shoulder_left"),InputRouter.key_name("shoulder_right")],"OPEN FIELD MOVE WHEEL: PREVIOUS / NEXT"])
+        control_rows.append(["KEYBOARD","T","ONLINE: WORLD CHAT"])
+    if desktop:
+        control_rows.append(["KEYBOARD","F11","FULL SCREEN"])
+        control_rows.append(["MOUSE","LEFT CLICK","CHOOSE A ROW, OR A SLICE OF AN OPEN WHEEL"])
+        control_rows.append(["MOUSE","MOVE","AIM AN OPEN WHEEL"])
+        control_rows.append(["MOUSE","RIGHT CLICK","BACK IN MENUS"])
+        control_rows.append(["MOUSE","DRAG","PAN THE MAP"])
+    if keyboard or controller:control_rows.append(["RESET","DEFAULTS","PUT EVERY KEY AND BUTTON BACK","@reset","key"])
     if is_instance_valid(main.coop_game) and main.coop_game.active:
         control_rows.append(["CONTROLLER","HOLD D-UP","ONLINE: MARK TILE IN FRONT"])
         control_rows.append(["CONTROLLER","A","FACE PLAYER: TRADE / BATTLE"])
@@ -484,7 +536,11 @@ func toggle(row: Control, on: bool) -> void:
 func touch_tap(row_index: int, point: Vector2) -> void:
     var index:=first+row_index
     if controls_page:
-        control_index=mini(index,control_rows.size()-1);refresh();return
+        if listening!="":return
+        control_index=mini(index,control_rows.size()-1);refresh()
+        # A click or tap on a changeable row asks for its new key or button at once.
+        if control_rows[control_index].size()>4:main.touch_ui.press("confirm")
+        return
     if index>=menu_rows.size():return
     selection=index;refresh()
     var key:String=menu_rows[index][0]

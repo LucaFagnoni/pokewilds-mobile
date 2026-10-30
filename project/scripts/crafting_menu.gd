@@ -109,6 +109,7 @@ func handle_build_menu_input(event: InputEvent) -> void:
         main.get_viewport().set_input_as_handled()
 
 func _refresh_build_menu() -> void:
+    (main.build_panel.get_node("Hint") as Label).text = InputRouter.hint("A: BUILD   L/R: ITEM   B: STOP")
     var recipes := CraftingData.build_recipes()
     if recipes.is_empty():
         main.build_list.text = "NO BUILD RECIPES"

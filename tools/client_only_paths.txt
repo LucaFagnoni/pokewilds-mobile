@@ -34,6 +34,7 @@ scripts/hud_style.gd*             # the HUD's glass look and colours
 scripts/minimap_frame.gd*         # minimap ring texture
 scripts/minimap_north.gd*         # minimap N marker
 scripts/touch_controls.gd*        # on-screen stick and buttons, layout saved on the device
+scripts/input_router.gd*          # keys, controller buttons and their rebinding: which press is which action
 scripts/touch_glyph.gd*           # drawing of one on-screen button
 scripts/touch_icons.gd*           # 12x12 icons drawn in code
 scripts/touch_field_hud.gd*       # field chips (what A does, active move)

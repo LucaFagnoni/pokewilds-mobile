@@ -25,11 +25,16 @@ const FIELD_MOVE_REPRESENTATIVES := {
 var main: GameMain
 var field_quick_tap_at := -1
 var field_quick_tap_move := -1
+## Desktop: where the mouse moved over the open wheel (main._input passes the
+## event's point); INF until it moves, so a resting mouse aims at nothing.
+var mouse_at := Vector2.INF
+const MOUSE_DEADZONE := 20.0
 
 func _init(owner_main: GameMain) -> void:
     main = owner_main
 
 func update_field_move_wheel_input() -> void:
+    if not main.field_move_wheel_open: mouse_at = Vector2.INF
     if Input.is_action_pressed("ball_mechanics") or field_move_wheel_stick().length()>=0.35:
         field_quick_tap_at=-1
     if not is_instance_valid(main.ball_mechanics):
@@ -80,7 +85,36 @@ func field_move_wheel_stick() -> Vector2:
         )
         if stick.length() >= 0.20:
             return stick
-    return main.input_router.movement_vector()
+    var keys: Vector2 = main.input_router.movement_vector()
+    if keys != Vector2.ZERO or mouse_at == Vector2.INF: return keys
+    # The wheel's centre aims nowhere.
+    var offset: Vector2 = mouse_at - main.field_move_wheel.get_global_rect().get_center()
+    return offset.normalized() if offset.length() >= MOUSE_DEADZONE else Vector2.ZERO
+
+## A left click on a slice uses it at once, as letting go of the wheel key
+## there would; the key or button still held is then ignored until released.
+func click_slice(at: Vector2) -> void:
+    mouse_at = at
+    var aim := field_move_wheel_stick()
+    var count: int = main.field_move_wheel.entries.size()
+    if aim == Vector2.ZERO or count == 0: return
+    var step := TAU / count
+    main.field_move_wheel_index = posmod(int(floor((fposmod(atan2(aim.y, aim.x) + PI * 0.5, TAU) + step * 0.5) / step)), count)
+    main.field_move_wheel.select(main.field_move_wheel_index)
+    if is_instance_valid(main.ball_mechanics) and GameOptions.enabled("ball_mechanics"):
+        main.ball_mechanics.ring.cancel()
+        main.ball_mechanics.close_wheel(true)
+    else: close_field_move_wheel(true)
+    main.field_wheel_wait_for_release = true
+
+## C / V (L1 / R1) step round the field-move wheel: the keyboard's eight
+## directions cannot point at all fifteen slices.
+func step_slice(by: int) -> void:
+    var count: int = main.field_move_wheel.entries.size()
+    if count == 0: return
+    var index: int = main.field_move_wheel_index
+    main.field_move_wheel_index = posmod(index + by, count) if index >= 0 else (0 if by > 0 else count - 1)
+    main.field_move_wheel.select(main.field_move_wheel_index)
 
 func open_field_move_wheel() -> void:
     field_quick_tap_at=-1
@@ -147,7 +181,7 @@ func configure_build_wheel() -> void:
             "cost":CraftingData.build_recipes()[index].get("cost", {}).duplicate()})
     main.field_move_wheel_index = -1
     main.field_move_wheel.configure(entries, -1)
-    main.field_move_wheel.page_label = "%d / %d  L / R" % [main.build_wheel_page + 1, ceili(float(CraftingData.build_recipes().size()) / main.BUILD_WHEEL_PAGE_SIZE)]
+    main.field_move_wheel.page_label = InputRouter.hint("%d / %d  L / R" % [main.build_wheel_page + 1, ceili(float(CraftingData.build_recipes().size()) / main.BUILD_WHEEL_PAGE_SIZE)])
     main.field_move_wheel.queue_redraw()
 
 func _field_move_wheel_entries() -> Array[Dictionary]:

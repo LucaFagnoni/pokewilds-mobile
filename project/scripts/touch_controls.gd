@@ -111,8 +111,10 @@ func _ready() -> void:
     _check_launch_control_sizes()
     _apply_default_layout()
     _load_layout()
-    controller_connected = input_router.controller_connected
-    input_router.controller_state_changed.connect(
+    # "Controller" here is any physical input in use: a pad or a hardware keyboard
+    # hides the buttons (HIDE WITH CONTROLLER), a touch brings them back.
+    controller_connected = input_router.physical_input
+    input_router.physical_input_changed.connect(
         _on_controller_state_changed
     )
     if DisplayServer.is_dark_mode_supported():
@@ -220,7 +222,7 @@ func set_button_layout(layout: int) -> void:
 
 func _dispatch_virtual_button(event: InputEventJoypadButton, epoch: int) -> void:
     if event.pressed and epoch != face_event_epoch: return
-    Input.parse_input_event(event)
+    Input.parse_input_event(InputRouter.virtual(event))
 
 func set_shoulders_visible(enabled: bool) -> void:
     enabled = enabled or edit_mode
@@ -377,7 +379,8 @@ func reset_layout() -> void:
 
 func _on_controller_state_changed(connected: bool) -> void:
     controller_connected = connected
-    _release_all()
+    # Only on hiding: the touch that shows the buttons again may be pressing one.
+    if connected: _release_all()
     _refresh_visibility()
 
 func _refresh_visibility() -> void:
@@ -462,7 +465,7 @@ func _steer_wheel(control: Control, point: Vector2) -> void:
         var event := InputEventJoypadMotion.new()
         event.axis = axis
         event.axis_value = vector.x if axis == JOY_AXIS_LEFT_X else vector.y
-        Input.parse_input_event.call_deferred(event)
+        Input.parse_input_event.call_deferred(InputRouter.virtual(event))
 
 func _end_wheel_steer() -> void:
     wheel_drag_index = -1
@@ -498,7 +501,7 @@ func _send_movement() -> void:
         var event := InputEventJoypadMotion.new()
         event.axis = axis
         event.axis_value = vector.x if axis == JOY_AXIS_LEFT_X else vector.y
-        Input.parse_input_event.call_deferred(event)
+        Input.parse_input_event.call_deferred(InputRouter.virtual(event))
 
 func _route_contact(index: int, point: Vector2, pressed: bool, canceled: bool) -> void:
     if not pressed or canceled:
@@ -628,7 +631,7 @@ func _set_virtual_button(control_name: String, pressed: bool) -> void:
         var event := InputEventJoypadMotion.new()
         event.axis = JOY_AXIS_TRIGGER_LEFT if control_name == "L2" else JOY_AXIS_TRIGGER_RIGHT
         event.axis_value = 1.0 if pressed else 0.0
-        Input.parse_input_event.call_deferred(event)
+        Input.parse_input_event.call_deferred(InputRouter.virtual(event))
 
 func _emit_action(action: String, pressed: bool) -> void:
     var action_event := InputEventAction.new()

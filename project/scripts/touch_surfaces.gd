@@ -191,6 +191,11 @@ func _yes_no(panel: Control, select: Callable) -> Dictionary:
 func _start_menu() -> Dictionary:
     var rows := []
     for tile in start_tiles: rows.append(tile.get_global_rect())
+    # Desktop (no touch tiles): the classic list's own rows, for the mouse.
+    if rows.is_empty():
+        for i in main.GAME_MENU_OPTIONS.size():
+            var option := main.game_menu_box.get_node_or_null("Option%d" % i) as Control
+            rows.append(grown(option, Vector2(20, 0)) if option != null and option.is_visible_in_tree() else Rect2())
     return {
         "rows": rows,
         "tap": func(i): main.game_menu_index = i; main._activate_game_menu_option(),
@@ -553,7 +558,10 @@ func _battle_moves() -> Dictionary:
     var m := main
     var count: int = mini(4, (m._command_pokemon().get("moves", []) as Array).size())
     var rows := []
-    for i in count: rows.append(move_card_nodes[i].get_global_rect())
+    # Desktop has no move cards: the classic move list's lines.
+    if move_card_nodes.size() < count: rows = ui.label_lines(m.battle_move_list, count)
+    else:
+        for i in count: rows.append(move_card_nodes[i].get_global_rect())
     return {
         "rows": rows,
         "tap": func(i): m.battle_move_index = i; m._refresh_battle_move_menu(); press("confirm"),

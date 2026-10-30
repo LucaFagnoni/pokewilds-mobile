@@ -928,6 +928,8 @@ func _setup_options() -> void:
         if child != game_menu_cursor: child.hide()
     for index in range(GAME_MENU_OPTIONS.size()):
         _source_ui_label(game_menu_box,"Option%d" % index,Vector2(28,11+index*17),Vector2(68,17),11,GAME_MENU_OPTIONS[index])
+    input_router.load_bindings(GameOptions.saved_bindings("keys"))
+    input_router.load_bindings(GameOptions.saved_bindings("pad"), true)
     _apply_game_options()
     start_menu.update_game_menu_cursor()
     _route_existing_audio(self)
@@ -1581,6 +1583,7 @@ func _handle_android_controls_gesture() -> void:
 
 func _input(event: InputEvent) -> void:
     last_input_msec = Time.get_ticks_msec()
+    input_router.observe(event)
     if is_instance_valid(touch_ui) and touch_ui.handle(event):
         get_viewport().set_input_as_handled()
         return
@@ -1650,6 +1653,12 @@ func _input(event: InputEvent) -> void:
         get_viewport().set_input_as_handled()
         return
     if field_move_wheel_open:
+        # Desktop mouse, on every wheel: moving it aims, a left click uses the slice.
+        if event is InputEventMouse and not touch_on():
+            if event is InputEventMouseMotion: move_wheel.mouse_at = event.position
+            elif event.pressed and event.button_index == MOUSE_BUTTON_LEFT: move_wheel.click_slice(event.position)
+            get_viewport().set_input_as_handled()
+            return
         if is_instance_valid(ball_mechanics) and ball_mechanics.handle(event):
             get_viewport().set_input_as_handled()
             return
@@ -1659,6 +1668,8 @@ func _input(event: InputEvent) -> void:
             var pages := ceili(float(CraftingData.build_recipes().size()) / BUILD_WHEEL_PAGE_SIZE)
             build_wheel_page = posmod(build_wheel_page + (1 if event.is_action_pressed("shoulder_right") else -1), pages)
             move_wheel.configure_build_wheel()
+        elif event.is_action_pressed("shoulder_left") or event.is_action_pressed("shoulder_right"):
+            move_wheel.step_slice(1 if event.is_action_pressed("shoulder_right") else -1)
         elif event.is_action_pressed("cancel"):
             move_wheel.close_field_move_wheel(false)
             field_wheel_wait_for_release = true
@@ -3910,6 +3921,7 @@ func _refresh_battle_submenu() -> void:
     else:
         battle_submenu_title.text = "POKEMON  %d/%d" % [battle_submenu_index + 1, battle_submenu_entries.size()]
         battle_submenu_hint.text = "A SWITCH   B BACK   LEFT/RIGHT PAGE"
+    battle_submenu_hint.text = InputRouter.hint(battle_submenu_hint.text)
 
 func _close_battle_submenu() -> void:
     battle_submenu_mode = ""

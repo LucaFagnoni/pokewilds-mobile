@@ -51,7 +51,7 @@ var hold_used := false
 var picked_row := -1
 
 static func touch_runtime() -> bool:
-    return OS.has_feature("mobile") or OS.get_cmdline_user_args().has("--touch-ui")
+    return InputRouter.touch_runtime()
 
 func configure(owner_main: Node, ui: CanvasLayer) -> void:
     main = owner_main
@@ -259,7 +259,7 @@ func _process(_delta: float) -> void:
 
 ## Returns true when the event was used (main then marks it handled).
 func handle(event: InputEvent) -> bool:
-    if not enabled: return false
+    if not enabled: return _mouse(event)
     surface = surfaces.build()
     if surface.is_empty():
         points.clear()
@@ -348,19 +348,71 @@ func _tap(point: Vector2) -> void:
         if extra_buttons[i].get_global_rect().grow(2).has_point(point):
             wanted[i][1].call()
             return
+    _tap_screen(point)
+
+## A tap on what the game itself draws: hotspots, rows, else anywhere. Returns
+## false when the surface has nothing there.
+func _tap_screen(point: Vector2) -> bool:
     for spot in surface.get("hotspots", []):
         if Rect2(spot[2]).grow(2).has_point(point):
             spot[1].call()
-            return
+            return true
     var rows: Array = surface.get("rows", [])
     for i in rows.size():
         if Rect2(rows[i]).has_point(point):
             var on_tap: Callable = surface.tap
             if on_tap.get_argument_count() >= 2: on_tap.call(i, point)
             else: on_tap.call(i)
-            return
+            return true
     if surface.has("tap_at"):
         surface.tap_at.call(point)
+        return true
+    return false
+
+## Desktop (and a touchscreen laptop, whose taps arrive as mouse clicks): the
+## mouse uses the finger's surfaces. A click is a tap on the game's own rows,
+## hotspots or screen; the touch-only buttons are not drawn, so they are left
+## out. On the map a click places the cursor and a held drag pans; the wheel
+## scrolls a list; the right button goes back. Anything else falls through
+## (zoom, the title screen's own clicks).
+var mouse_down := Vector2.INF
+func _mouse(event: InputEvent) -> bool:
+    if not (event is InputEventMouseButton or event is InputEventMouseMotion) or not main.started: return false
+    # Naming a waypoint: its panel has real buttons, and building the surface would move the panel.
+    if is_instance_valid(main.waypoint_ui) and main.waypoint_ui.naming: return false
+    if event is InputEventMouseMotion:
+        if mouse_down == Vector2.INF or not event.button_mask & MOUSE_BUTTON_MASK_LEFT or not surface.has("drag"): return false
+        if not moved and event.position.distance_to(mouse_down) <= TAP_SLOP: return true
+        moved = true
+        surface.drag.call(event.relative)
+        return true
+    surface = surfaces.build()
+    match event.button_index:
+        MOUSE_BUTTON_LEFT:
+            # A surface that drags taps on release (a drag is no click); the rest on press.
+            if not event.pressed:
+                if mouse_down == Vector2.INF: return false
+                var start := mouse_down
+                mouse_down = Vector2.INF
+                if not moved: _tap_screen(start)
+                return true
+            if surface.has("drag"):
+                mouse_down = event.position
+                moved = false
+                return true
+            return _tap_screen(event.position)
+        MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN:
+            if not surface.has("scroll"): return false
+            if event.pressed: surface.scroll.call(1 if event.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1)
+            return true
+        MOUSE_BUTTON_RIGHT:
+            if not surface.has("back"): return false
+            if event.pressed:
+                surface.back.call()
+                # The right button is also the field-move wheel's: not that, once the menu is gone.
+                main.field_wheel_wait_for_release = true
+            return true
+    return false
 
 ## Sends an action as if a button had been pressed and released, after the
 ## current input event has finished propagating.

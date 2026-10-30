@@ -139,7 +139,7 @@ func configure_wheel() -> void:
             wheel_entries.append({"move":ball,"available":true,"texture":ball_texture(ball),"ball":ball,"detail":"x%d  RANGE %d" % [main.inventory[ball],Rules.throw_range(ball)]})
         main.field_move_wheel.configure(wheel_entries)
         main.field_move_wheel.center_title = "POKE BALLS"
-        main.field_move_wheel.page_label = "%d / %d  L / R" % [wheel_page+1,pages]
+        main.field_move_wheel.page_label = InputRouter.hint("%d / %d  L / R" % [wheel_page+1,pages])
     else:
         for index in range(mini(6,main.caught_pokemon.size())):
             var id = main._ensure_party_ecology_id(index)
@@ -149,7 +149,7 @@ func configure_wheel() -> void:
             wheel_entries.append({"move":"EGG" if member.get("is_egg",false) else PokemonState.display_name(member).to_upper(),"available":usable,"texture":main._field_move_wheel_icon(str(member.get("species","")),Data.is_shiny(member),str(member.get("form",""))),"member":id,"detail":move if usable else "EGG" if member.get("is_egg",false) else "FAINTED"})
         main.field_move_wheel.configure(wheel_entries)
         main.field_move_wheel.center_title = "PARTY"
-        main.field_move_wheel.page_label = "L / R: FIELD MOVE"
+        main.field_move_wheel.page_label = InputRouter.hint("L / R: FIELD MOVE")
     main.field_move_wheel.queue_redraw()
 
 func handle(event: InputEvent) -> bool:

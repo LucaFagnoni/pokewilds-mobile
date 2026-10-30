@@ -67,7 +67,7 @@ func configure(owner_main: Node) -> void:
         search_label = text(header,"",Vector2(250,15),Vector2(200,18),14)
     detail=panel(Vector2(250,82),Vector2(388,240))
     var footer:=panel(Vector2(2,324),Vector2(636,34))
-    footer_label = text(footer,"UP/DOWN: SELECT  LEFT/RIGHT: PAGE  A: CRY  B: BACK",Vector2(14,11),Vector2(606,17),12)
+    footer_label = text(footer,InputRouter.hint("UP/DOWN: SELECT  LEFT/RIGHT: PAGE  A: CRY  B: BACK"),Vector2(14,11),Vector2(606,17),12)
     if touch_grid: footer_label.text = "TAP: SELECT   TAP AGAIN: CRY   SWIPE: PAGE"
     cry=AudioStreamPlayer.new();add_child(cry)
     roster=JSON.parse_string(FileAccess.get_file_as_string("res://data/pokedex_roster.json"))

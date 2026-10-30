@@ -30,6 +30,7 @@ TESTS = [
     ("saved_servers_test", ["--touch-ui"]),
     ("status_hud_test", ["--touch-ui"]),
     ("solo_keyboard_test", ["--touch-ui"]),
+    ("desktop_keys_test", []),
     ("hints_test", ["--touch-ui"]),
     ("hints_test", []),
     ("compat_test", []),

@@ -7,6 +7,7 @@ the version description in Feather. Write it for players, not developers.
 
 ### New
 - **PokeWilds on your computer:** the game now also comes for Windows, Mac and Linux (PokeWilds-win64.zip, PokeWilds-macos.zip, PokeWilds-linux-x86_64.tar.gz), and the dedicated server for Linux and Mac too (PokeWilds-Server-linux-x86_64.tar.gz, PokeWilds-Server-macos.zip, started with start_server.sh). On a Mac, right-click PokeWilds.app and choose Open the first time, because the app is not signed by Apple.
+- **Keyboard and mouse on your computer:** play with WASD or the arrows, Z or Space to act, X or Q to go back, Shift to run, Enter for the menu, C / V to change materials and pages, F for the field move wheel (or hold the right mouse button and aim with the mouse), R to throw, M for the map, P for the Pokedex, B to build and T to chat. The original PokeWilds keys (arrows, Z, X, Enter) still work. Click menu rows like you would tap them, drag the map, and use the wheel to zoom. Change any key or controller button in OPTIONS > CONTROLS. On a phone, the on-screen buttons now hide while you use a controller or keyboard and come back when you touch the screen.
 
 ## 0.10.446
 

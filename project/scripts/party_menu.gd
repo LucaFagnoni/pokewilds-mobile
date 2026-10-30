@@ -410,7 +410,7 @@ func refresh_pokemon_category_menu() -> void:
 
     if main.caught_pokemon.is_empty():
         refresh_party_list_rows(main.pokemon_party_rows, [], -1)
-        main.pokemon_menu_prompt.text = "NO POKEMON." if main.touch_on() else "NO POKEMON.   B: BACK"
+        main.pokemon_menu_prompt.text = "NO POKEMON." if main.touch_on() else InputRouter.hint("NO POKEMON.   B: BACK")
         return
 
     var visible_count := mini(6, main.caught_pokemon.size())
@@ -423,7 +423,7 @@ func refresh_pokemon_category_menu() -> void:
         main.pokemon_menu_index)
     var entry := main.caught_pokemon[main.pokemon_menu_index] as Dictionary
     if bool(entry.get("is_egg", false)):
-        main.pokemon_menu_prompt.text = ("%d STEPS TO HATCH" if main.touch_on() else "%d STEPS TO HATCH   B: BACK") % int(
+        main.pokemon_menu_prompt.text = ("%d STEPS TO HATCH" if main.touch_on() else InputRouter.hint("%d STEPS TO HATCH   B: BACK")) % int(
             entry.get("hatch_steps", main.EGG_HATCH_STEPS))
         return
     main.pokemon_menu_prompt.text = (

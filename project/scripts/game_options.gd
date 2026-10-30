@@ -98,6 +98,25 @@ static func change(key: String, value: Variant) -> Error:
     apply_audio()
     return OK
 
+## Key and controller bindings (OPTIONS > CONTROLS) have their own [keys] and
+## [pad] sections of game.ini: they belong to the device, not to a world, so
+## loading a world never resets them. Every other write keeps them (see change()).
+static func saved_bindings(section: String) -> Dictionary:
+    var cfg := ConfigFile.new()
+    if _read(PATH, cfg) != OK or not cfg.has_section(section): return {}
+    var result := {}
+    for action in cfg.get_section_keys(section): result[action] = cfg.get_value(section, action)
+    return result
+
+## Empty clears the section: every binding back to its default.
+static func save_bindings(section: String, bindings: Dictionary) -> Error:
+    var cfg := ConfigFile.new()
+    var err := _read(PATH, cfg)
+    if err != OK: return err
+    if cfg.has_section(section): cfg.erase_section(section)
+    for action in bindings: cfg.set_value(section, action, bindings[action])
+    return _write(PATH, cfg)
+
 static func enabled(key: String) -> bool:
     return bool(values.get(key,true))
 

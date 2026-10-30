@@ -763,7 +763,7 @@ func show_map_menu() -> void:
     main.game_menu_open = true
     main.game_menu.show()
     main.world.set_gameplay_enabled(false)
-    main.get_node("UI/GameMenu/MapScreen/Hint").text = "DPAD/STICK: CURSOR  R STICK: PAN\nL/R: ZOOM  " + ("Waypoint: A  " if GameOptions.enabled("map_waypoint") else "") + "B: BACK"
+    main.get_node("UI/GameMenu/MapScreen/Hint").text = InputRouter.hint("DPAD/STICK: CURSOR  R STICK: PAN\nL/R: ZOOM  " + ("Waypoint: A  " if GameOptions.enabled("map_waypoint") else "") + "B: BACK")
     main.get_node("UI/GameMenu/MapScreen/Hint").add_theme_constant_override("line_spacing", 0)
     if not is_instance_valid(main.waypoint_ui):
         main.waypoint_ui=preload("res://scripts/map_waypoints.gd").new()
