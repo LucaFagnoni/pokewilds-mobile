@@ -693,6 +693,12 @@ var shared_save_folder: Node
 var dark_mode_ui: Node
 
 func _ready() -> void:
+    # A dedicated server has no game screen: dedicated_server.gd hosts without
+    # it. Started without res://scenes/server.tscn, this scene still loads: it goes.
+    if preload("res://scripts/dedicated_server.gd").active:
+        set_process(false)
+        queue_free()
+        return
     _watch_screens()
     # Keep initialization and Android folder synchronization offscreen.
     $UI.hide()

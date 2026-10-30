@@ -1,5 +1,6 @@
 """Makes server/fixtures/online: the folder of an online world as THIS game saves
-it (world.json, host.save, journal, area snapshots) as a zip, after a short
+it (world.json, journal, area snapshots, name.txt; no host.save since the
+server is no player) as a zip, after a short
 dedicated server run: a player joins, walks into a new area the server makes,
 and leaves.
 fixture_load_test.gd loads it with the code of the day. Run it again only to make

@@ -11,7 +11,8 @@ then three on one new world:
    password is refused, the same ID on a second device gets the same character
    back, and a device that played before IDs keeps its character; two players
    in the first area see each other, and nobody else;
-3. player IDs, closed: an unknown ID is refused until `account add` makes it.
+3. player IDs, closed: an unknown ID is refused until `account add` makes it
+   (this server started with a bare --server: the game's scene hands over).
 
     python server/smoke_test.py GODOT            (GODOT = editor binary, runs project/)
     python server/smoke_test.py PokeWilds.console.exe --exe
@@ -85,9 +86,12 @@ server_data = os.path.join(work, "server")
 server = None
 
 
-def start_server(name, extra, world="Smoke", data=None):
+def start_server(name, extra, world="Smoke", data=None, scene=True):
+    """The server as start_server.bat starts it: its own scene, never the game's
+    (main.tscn); without `scene`, as a bare --server does, the game's scene hands over."""
     global server
-    server = start(name, ["--server", "--port", port, "--world", world, "--size", "S", "--data", data or server_data, "--no-upnp", "--area-size", "S"] + extra)
+    server = start(name, (["res://scenes/server.tscn"] if scene else []) + ["--server", "--port", port, "--world", world, "--size", "S",
+        "--data", data or server_data, "--no-upnp", "--area-size", "S"] + extra)
     started = time.time()
     wait_for(name, server, "listening on TCP port " + port, 900)
     print(f"{name} ready in {time.time() - started:.0f}s")
@@ -213,7 +217,7 @@ try:
     print("accounts.json holds salted hashes only")
 
     # --- 3: closed: only IDs made on the server --------------------------------
-    run = start_server("server3", ["--accounts", "closed"])
+    run = start_server("server3", ["--accounts", "closed"], scene=False)
     join("carol-unknown", ["--id", "carol", "--password", "pass-4"], "UNKNOWN PLAYER ID")
     send(server, "account add carol pass-4")
     wait_for(run, server, "carol can now log in", 30)

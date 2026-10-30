@@ -84,7 +84,8 @@ func _relay(actor:String,packet:Dictionary)->void:
     if now-int(_last_rest.get(actor,-1000))<1000:return
     _last_rest[actor]=now
     var outgoing={"kind":"campfire_rest","scope":packet.scope,"x":int(packet.x),"y":int(packet.y),"actor":actor}
-    if actor!=game.session.actor:_friend_rest(outgoing)
+    # The host's own player rests too (a dedicated server has none).
+    if actor!=game.session.actor and game.main!=null:_friend_rest(outgoing)
     for peer in game.session.players:
         if peer==1 or game.session.players[peer].actor==actor:continue
         var other=game.session.players[peer].actor

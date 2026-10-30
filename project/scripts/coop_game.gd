@@ -282,10 +282,13 @@ func cancel_join()->void:
     session.stop();Network.join_close();Cache.online_namespace=""
     if is_instance_valid(service):service.queue_free();service=null
 
+## `game`: main.gd, whose screen and World this game plays on; null for a
+## dedicated server (dedicated_server.gd), which has neither: only what hosts
+## is made then, not what draws or plays.
 func configure(game:Node)->void:
     preload("res://scripts/crafting_data.gd").online_enabled=false
     main=game;process_mode=Node.PROCESS_MODE_ALWAYS
-    if not ended_reason.is_empty():main.menu_status.text=ended_reason;notice=ended_reason;ended_reason=""
+    if main!=null and not ended_reason.is_empty():main.menu_status.text=ended_reason;notice=ended_reason;ended_reason=""
     lobby=Lobby.new();add_child(lobby)
     session=Session.new();add_child(session)
     session.admitted.connect(_admitted)
@@ -302,15 +305,17 @@ func configure(game:Node)->void:
     visuals=Players.new();add_child(visuals);visuals.configure(main,session,state)
     visuals.presence_received.connect(_presence)
     commands=Commands.new();add_child(commands);commands.bind(session,state)
-    commands.interactions.battle_item_rules=main.BATTLE_ITEM_RULES
+    commands.interactions.battle_item_rules=preload("res://scripts/battle_session.gd").ITEM_RULES
     commands.changed.connect(_committed)
     commands.reply.connect(_interaction_reply)
-    interaction_ui=preload("res://scripts/coop_interaction_ui.gd").new()
-    main.get_node("UI").add_child(interaction_ui);interaction_ui.configure(main,self)
+    var ui:Node=main.get_node("UI") if main!=null else self
     pvp=preload("res://scripts/coop_pvp_runtime.gd").new();add_child(pvp);pvp.configure(self)
-    interaction_ui.battle_accepted.connect(pvp.receive)
+    if main!=null:
+        interaction_ui=preload("res://scripts/coop_interaction_ui.gd").new()
+        ui.add_child(interaction_ui);interaction_ui.configure(main,self)
+        interaction_ui.battle_accepted.connect(pvp.receive)
     chat=preload("res://scripts/coop_chat.gd").new()
-    main.get_node("UI").add_child(chat);chat.configure(main,self)
+    ui.add_child(chat);chat.configure(main,self)
     rest=preload("res://scripts/coop_rest.gd").new();add_child(rest);rest.configure(self)
     storage=preload("res://scripts/coop_storage.gd").new();add_child(storage);storage.configure(self)
     beacons=preload("res://scripts/coop_beacons.gd").new();add_child(beacons);beacons.configure(self)
@@ -323,7 +328,7 @@ func configure(game:Node)->void:
     commands.population_action=population.execute
     population_authority=preload("res://scripts/coop_population_authority.gd").new();add_child(population_authority);population_authority.configure(self)
     hordes=preload("res://scripts/coop_horde_runtime.gd").new()
-    main.get_node("UI").add_child(hordes);hordes.configure(self)
+    ui.add_child(hordes);hordes.configure(self)
     commands.horde_action=hordes.execute
     raids=preload("res://scripts/coop_raid_runtime.gd").new();add_child(raids);raids.configure(self)
     commands.raid_action=raids.execute
@@ -331,6 +336,9 @@ func configure(game:Node)->void:
     commands.population_battle_action=population_battles.execute
     events=preload("res://scripts/coop_special_events.gd").new();add_child(events);events.configure(self)
     commands.event_action=events.execute
+    # What these do each frame is for this game's own player and World.
+    if main==null:
+        for runtime in [wild,population,events,raids,rest,chat]:runtime.set_process(false)
 
 func handle_input(event:InputEvent)->bool:
     if interaction_ui.visible:interaction_ui.handle(event);return true
@@ -991,11 +999,13 @@ func _connection_lost()->void:
 func end_session(reason:String)->void:
     print("ONLINE session ended: ",reason," (transport: ",session.transport.last_disconnect_reason,")")
     preload("res://scripts/crafting_data.gd").online_enabled=false
-    main.world.set_gameplay_enabled(false)
+    if main!=null:main.world.set_gameplay_enabled(false)
     active=false;ended_reason=reason
     lobby.stop_advertise();Network.host_close();Network.join_close()
     if hosting:store.sync()
     session.stop();Cache.online_namespace=""
+    # A dedicated server has no title screen to go back to: it stops, saying why.
+    if main==null:printerr("SERVER ERROR: the world stopped: ",reason.replace("\n"," "));get_tree().quit(1);return
     get_tree().call_deferred("reload_current_scene")
 
 ## A guest's clock follows the host's without ever stepping back. It used to be
@@ -1903,6 +1913,7 @@ func publish_population()->void:
     if not await publish_current(true):print("ONLINE the new area's Pokemon could not be sent")
 
 func _failure(reason:String)->void:
+    if main==null:printerr("SERVER ERROR: ",reason);return
     main.menu_status.text=reason.to_upper()
     # Refused after being let in, whether still loading or already playing:
     # the host removed this player. Leave the world and say why.

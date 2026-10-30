@@ -9,7 +9,7 @@ var applying:=false
 var motion_busy:=false
 var last_motion:=0
 var sync_pending:=false
-func configure(coordinator:Node)->void:game=coordinator
+func configure(coordinator:Node)->void:game=coordinator;_egg_rng.randomize()
 func model():
     var value=Records.new();value.state=game.state;value.presence=game.commands.presence
     value.can_publish=game.service.areas.can_publish if is_instance_valid(game.service) else Callable()
@@ -17,9 +17,11 @@ func model():
     value.can_simulate=can_simulate
     return value
 
+var _egg_rng:=RandomNumberGenerator.new()
 func make_egg(record:Dictionary,profile:Dictionary)->Dictionary:
     var species=String(record.get("egg_species",record.get("species",""))).to_lower()
-    var egg:Dictionary=game.main._pokemon_from_egg_record(record,species,maxi(1,int(record.get("level",5))))
+    # A dedicated server (no main) draws with a generator of its own.
+    var egg:Dictionary=preload("res://scripts/battle_engine.gd").egg_pokemon(record,species,maxi(1,int(record.get("level",5))),game.main.battle_rng if game.main!=null else _egg_rng)
     var cycles=maxi(1,int(record.get("hatch_cycles",preload("res://scripts/pokemon_data.gd").info(species).get("egg_cycles",20))))
     egg["is_egg"]=true;egg["egg_species"]=species;egg["hatch_cycles"]=cycles
     egg["hatch_steps"]=maxi(1,cycles*preload("res://scripts/pokemon_ecology.gd").EGG_STEP_INTERVAL-int(profile.get("save",{}).get("egg_step_timer",0)))
@@ -53,8 +55,6 @@ func local_scope()->String:
 func _process(delta:float)->void:
     if not is_instance_valid(game) or not game.active or not game.main.started or game.main.generating or game.main.edge_travel_busy:return
     if sync_pending:sync_pending=false;synchronize()
-    # A dedicated server's World runs no area: each is an AreaSim (coop_population_authority.gd).
-    if preload("res://scripts/dedicated_server.gd").active:return
     var world=game.main.world
     if world.is_processing() and (not world.gameplay_enabled or world.active_area_id!="OVERWORLD"):
         world._update_ecology(delta)

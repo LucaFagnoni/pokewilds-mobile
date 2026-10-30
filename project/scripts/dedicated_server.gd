@@ -1,11 +1,15 @@
 extends Node
-## Dedicated co-op server: `PokeWilds.console.exe --headless --server [--port N]
-## [--world NAME] [--size S|M|L|XL|XXL] [--accounts open|closed|off] [--password P]
-## [--data DIR]`. Players log in with an ID and a password (coop_accounts.gd):
+## Dedicated co-op server: `PokeWilds.console.exe --headless res://scenes/server.tscn
+## --server [--port N] [--world NAME] [--size S|M|L|XL|XXL] [--accounts open|closed|off]
+## [--password P] [--data DIR]` (start_server.bat runs it so). The scene is
+## the server's own, an empty one: the game's (main.tscn: main.gd, its World,
+## its screen) is never loaded; started without it, main.gd hands over at once.
+## Players log in with an ID and a password (coop_accounts.gd):
 ## "open" makes an ID on its first login, "closed" only lets in IDs made here
 ## with `account add`, "off" goes back to device identities and the optional
 ## shared --password.
-## The server hosts with the online host's code (coop_game.gd serve), but is no
+## The server hosts with the online host's code (coop_game.gd serve, the
+## coordinator made here with no game of its own: _serve), but is no
 ## player: it has no World and no character, is in no area, sends no presence
 ## and is not counted (coop_state.gd SERVER). It holds the world's state,
 ## journal and areas, each area players are in an AreaSim
@@ -135,13 +139,22 @@ func _ready()->void:
         var build:String=preload("res://scripts/coop_session.gd").build_id()
         var compat:String=preload("res://scripts/coop_session.gd").compat_id()
         print("SERVER PokeWilds dedicated server",(" build "+build.left(8)) if not build.is_empty() else "",(" compat "+compat.left(8)) if compat!=build else "",", data in ",ProjectSettings.globalize_path(Paths.root_path()))
+        _serve()
+        return
     while not (get_tree().current_scene!=null and get_tree().current_scene.get("startup_complete")):
         await get_tree().process_frame
     main=get_tree().current_scene
     if not _area_job.is_empty():
         var area_maker:=AreaMaker.new();add_child(area_maker);area_maker.generate(main,_area_job);return
-    if not active:_join();return
-    coop=main.coop_game
+    _join()
+
+## The server, with no main.tscn (no main.gd, World or screen: main.gd hands
+## over at once when it is loaded anyway): this node holds its coordinator,
+## coop_game.gd configured with no game of its own, which hosts the world
+## (serve), and what reaches it from outside (console, router, games list).
+func _serve()->void:
+    Paths.initialize()
+    coop=preload("res://scripts/coop_game.gd").new();coop.name="CoopGame";add_child(coop);coop.configure(null)
     coop.host_port=port;coop.max_players=max_players
     coop.wild.enforce_battles=enforce_battles
     coop.server_population=population_authority=="server"
