@@ -102,7 +102,7 @@ python3 "$repo/tools/compat_id.py" "$work/project" > "$work/project/compat_id.tx
 [ "$(git -C "$repo" rev-parse --is-shallow-repository)" = false ] \
   || { echo "Shallow clone: the version is the commit count, run git fetch --unshallow" >&2; exit 1; }
 count=$(git -C "$repo" rev-list --count HEAD)
-version="$(sed -n 's/^application\/short_version="\([0-9]*\.[0-9]*\).*/\1/p' "$work/project/export_presets.cfg").$count"
+version="$(sed -n 's/^application\/short_version="\([0-9]*\.[0-9]*\).*/\1/p' "$work/project/export_presets.cfg" | head -n 1).$count"
 echo "$version" > "$work/project/build_version.txt"  # shown on the title screen
 VERSION=$version BUNDLE=$count python3 - "$work/project/export_presets.cfg" <<'EOF'
 import os, re, sys

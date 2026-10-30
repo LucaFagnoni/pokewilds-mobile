@@ -53,7 +53,8 @@ jobs:
       # gives a local build of the same commit (tools/ios_xtool) the same version.
       - id: names
         run: |
-          base=$(sed -n 's/^application\/short_version="\([0-9]*\.[0-9]*\).*/\1/p' project/export_presets.cfg)
+          # The iOS preset's, the first: the macOS presets carry one too.
+          base=$(sed -n 's/^application\/short_version="\([0-9]*\.[0-9]*\).*/\1/p' project/export_presets.cfg | head -n 1)
           test -n "$base"
           count=$(git rev-list --count HEAD)
           echo "tag=build-$(printf '%04d' "$GITHUB_RUN_NUMBER")" >> "$GITHUB_OUTPUT"
