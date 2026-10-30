@@ -5,18 +5,20 @@ extends Node
 ## "open" makes an ID on its first login, "closed" only lets in IDs made here
 ## with `account add`, "off" goes back to device identities and the optional
 ## shared --password.
-## The server is the ordinary online host (see coop_game.gd) whose own player
-## never shows: it stands still at the spawn, sends no presence, is not counted
-## in the lobby, cannot be met or chased, and never plays. Everything else
-## (areas, journal, saves) is the host code players already use, so a phone
-## hosting keeps working as before. New areas are made here, not on phones
-## (server_area_maker.gd), and the router port is opened by UPnP when it can be.
+## The server hosts with the online host's code (coop_game.gd serve), but is no
+## player: it has no World and no character, is in no area, sends no presence
+## and is not counted (coop_state.gd SERVER). It holds the world's state,
+## journal and areas, each area players are in an AreaSim
+## (coop_population_authority.gd), relays the players to each other, and makes
+## every new area itself (server_area_maker.gd), the first one when the first
+## player comes; a new player starts on that first area's spawn. A phone hosting
+## runs the same host code with its own player. The router port is opened by
+## UPnP when it can be.
 ## Settings come from server.cfg beside the exe (or --config PATH), then the
 ## command line. Without --server this node does nothing.
 ## `--join HOST[:PORT] [--id ID] [--password P] [--data DIR] [--quit-after-join]
-## [--travel]` instead joins a game at startup, for PCs and for the smoke test.
+## [--travel] [--see N]` instead joins a game at startup, for PCs and for the smoke test.
 const Paths=preload("res://scripts/game_data_paths.gd")
-const Identity=preload("res://scripts/coop_identity.gd")
 const JoinCode=preload("res://scripts/coop_join_code.gd")
 const AreaMaker=preload("res://scripts/server_area_maker.gd")
 const SIZES:=["S","M","L","XL","XXL"]
@@ -37,6 +39,7 @@ static var active:=false
 var joining:=""
 var _quit_after_join:=false
 var _travel:=false
+var _see:=0
 var _area_job:=""
 var port:=JoinCode.PORT
 var world_name:="PokeWilds"
@@ -55,6 +58,8 @@ var enforce_battles:=true
 ## "players" (the first player in each area, as when a phone hosts).
 var population_authority:="server"
 var main:Node
+## The server's coordinator (coop_game.gd), which hosts the world.
+var coop:Node
 var maker:Node
 var _saving:=false
 var _quitting:=false
@@ -66,6 +71,7 @@ func _init()->void:
     joining="" if active else _arg(args,"--join","")
     _quit_after_join="--quit-after-join" in args
     _travel="--travel" in args
+    _see=int(_arg(args,"--see","0"))
     _area_job="" if active else _arg(args,"--generate-area","")
     if not _area_job.is_empty():_use_data(_area_job.get_base_dir());return
     if not active and joining.is_empty():return
@@ -135,7 +141,7 @@ func _ready()->void:
     if not _area_job.is_empty():
         var area_maker:=AreaMaker.new();add_child(area_maker);area_maker.generate(main,_area_job);return
     if not active:_join();return
-    var coop:Node=main.coop_game
+    coop=main.coop_game
     coop.host_port=port;coop.max_players=max_players
     coop.wild.enforce_battles=enforce_battles
     coop.server_population=population_authority=="server"
@@ -146,30 +152,18 @@ func _ready()->void:
         coop.session.accounts.open=accounts_mode=="open"
         if not password.is_empty():print("SERVER note: with player IDs the shared password is not used (use accounts=closed to choose who plays)")
     else:coop.lobby_private=not password.is_empty();coop.lobby_password=password
-    main.world_edit.text=world_name;main.selected_world_size=size
-    main.player_model_name.text="SERVER"
-    var token:=Identity.token()
-    if token.is_empty():_fail("player identity could not load");return
-    var saved:=""
-    for entry in coop.saves.entries(token.sha256_text()):
-        if String(entry.data.get("world_name",""))==world_name:saved=String(entry.id);break
-    print("SERVER ",("loading world \"%s\" (%s)"%[world_name,saved]) if not saved.is_empty() else ("creating world \"%s\" size %s"%[world_name,SIZES[size]]))
-    await coop.choose("LOAD" if not saved.is_empty() else "NEW",saved)
-    if not main.started or not coop.active:_fail(String(main.menu_status.text));return
-    # The server's own player never plays: nothing may start a battle for it,
-    # and with gameplay off the area is simulated the way it is for a host
-    # who has a menu open.
-    for pair in [["encounter_requested","_on_encounter_requested"],["battle_requested","_on_battle_requested"]]:
-        if main.world.has_signal(pair[0]) and main.world.is_connected(pair[0],Callable(main,pair[1])):main.world.disconnect(pair[0],Callable(main,pair[1]))
-    main.world.set_gameplay_enabled(false)
-    coop.commands.presence.erase(coop.session.actor)
-    coop.generate_area=func(actor,area,area_token):return await maker.make(main,actor,area,area_token)
-    coop.session.admitted.connect(func(peer,_actor,profile):print("SERVER join: ",profile.get("name","PLAYER"),_account(peer)," from ",_address(peer)," (",coop.session.players.size()-1,"/",max_players,")"))
-    coop.session.departed.connect(func(_peer,_actor):print("SERVER leave (",coop.session.players.size()-1,"/",max_players,")"))
+    var found:String=coop.find_world(world_name)
+    print("SERVER ",("loading world \"%s\" (%s)"%[world_name,found]) if not found.is_empty() else ("creating world \"%s\": its first area (size %s) is made when the first player comes"%[world_name,SIZES[size]]))
+    # Every area is made here as players reach it, the first with the world's size.
+    coop.generate_area=func(actor,area,area_token):return await maker.make(coop,actor,area,area_token,size if area==coop.SPAWN_AREA else -1)
+    var failed:String=await coop.serve(world_name)
+    if not failed.is_empty():_fail("world \"%s\": %s"%[world_name,failed]);return
+    coop.session.admitted.connect(func(peer,_actor,profile):print("SERVER join: ",profile.get("name","PLAYER"),_account(peer)," from ",_address(peer)," (",coop.session.players.size(),"/",max_players,")"))
+    coop.session.departed.connect(func(_peer,_actor):print("SERVER leave (",coop.session.players.size(),"/",max_players,")"))
     print("SERVER world ready, listening on TCP port ",port,(" with a password" if coop.lobby_private else ""),
         {"open":", player IDs: a new ID is made on its first login","closed":", player IDs: only those made with `account add`","off":""}[accounts_mode])
     print("SERVER commands: ",COMMANDS)
-    _list_request=HTTPRequest.new();_list_request.timeout=main.coop_game.lobby.REQUEST_TIMEOUT;add_child(_list_request)
+    _list_request=HTTPRequest.new();_list_request.timeout=coop.lobby.REQUEST_TIMEOUT;add_child(_list_request)
     _list_request.request_completed.connect(_list_reply)
     print("SERVER online games list: ",_list_state())
     _next_save=Time.get_ticks_msec()+int(autosave_minutes*60000)
@@ -282,12 +276,11 @@ func _read_stdin()->void:
 func _command(line:String)->void:
     var word:=line.get_slice(" ",0).to_lower()
     var rest:=line.substr(word.length()).strip_edges()
-    var coop:Node=main.coop_game
     match word:
         "stop","quit","exit","restart":
             if not rest.is_empty() and (not rest.is_valid_int() or int(rest)<0 or int(rest)>3600):print("SERVER usage: ",word," [SECONDS, 0-3600]");return
             # Nobody to warn: at once.
-            var seconds:=int(rest) if not rest.is_empty() else (COUNTDOWN_SECONDS if coop.session.players.size()>1 else 0)
+            var seconds:=int(rest) if not rest.is_empty() else (COUNTDOWN_SECONDS if not coop.session.players.is_empty() else 0)
             _countdown="restart" if word=="restart" else "stop";_countdown_left=seconds;_countdown_at=Time.get_ticks_msec()
         "cancel":
             if _countdown.is_empty():print("SERVER nothing to cancel");return
@@ -297,7 +290,7 @@ func _command(line:String)->void:
             if not rest.is_valid_int() or int(rest)<1 or int(rest)>Session.MAX_PLAYERS:print("SERVER usage: maxplayers 1-",Session.MAX_PLAYERS," (now ",max_players,")");return
             # Nobody is removed: only new players are turned away until there is room.
             max_players=int(rest);coop.max_players=max_players;coop.session.transport.max_peers=max_players
-            print("SERVER max players ",max_players," (",coop.session.players.size()-1," playing)",_save_setting("max_players",max_players))
+            print("SERVER max players ",max_players," (",coop.session.players.size()," playing)",_save_setting("max_players",max_players))
         "list","publish","unpublish":
             var value:=rest.to_lower()
             if word=="list" and not value in ["on","off"]:print("SERVER online games list: ",_list_state()," (list on|off)");return
@@ -335,7 +328,7 @@ func _command(line:String)->void:
 
 ## account add ID PASSWORD | account password ID PASSWORD | account remove ID
 func _account_command(text:String)->void:
-    var accounts=main.coop_game.session.accounts
+    var accounts=coop.session.accounts
     var parts:=text.split(" ",false)
     if accounts==null:print("SERVER player IDs are off (accounts=off)");return
     if parts.size()<2 or not parts[0].to_lower() in ["add","password","remove"]:print("SERVER usage: account add|password|remove ID [PASSWORD]");return
@@ -350,45 +343,41 @@ func _account_command(text:String)->void:
             print("SERVER ",id,(" can now log in" if parts[0].to_lower()=="add" else " has a new password") if accounts.set_password(id,parts[2])==OK else " could not be saved")
 
 func _account(peer:int)->String:
-    var account:=String(main.coop_game.session.players.get(peer,{}).get("account",""))
+    var account:=String(coop.session.players.get(peer,{}).get("account",""))
     return "" if account.is_empty() else " (ID "+account+")"
 
 ## A player by name or by their place in the `players` list (1ST, 2, ...).
 func _player(text:String)->int:
-    for player in main.coop_game.kick_candidates():
+    for player in coop.kick_candidates():
         if String(player.name)==text.to_upper() or String(player.order)==text.to_upper() or str(int(player.order.to_int()))==text:return int(player.peer)
     return -1
 
 func _address(peer:int)->String:
-    var peers:Dictionary=main.coop_game.session.transport.peers
+    var peers:Dictionary=coop.session.transport.peers
     return String(peers[peer].socket.get_connected_host()) if peers.has(peer) else "?"
 
 func _process(_delta:float)->void:
     if _next_save==0 or _quitting:return
     if not _countdown.is_empty() and Time.get_ticks_msec()>=_countdown_at:_count_down()
     if listed:_announce()
-    # Keep the server's player out of play whatever re-enabled it.
-    if main.world.gameplay_enabled:main.world.set_gameplay_enabled(false)
     if _lease_renew_at>0 and Time.get_ticks_msec()>=_lease_renew_at and _router_thread==null:
         _lease_renew_at=0;show_addresses()
     if Time.get_ticks_msec()<_next_save:return
     _next_save=Time.get_ticks_msec()+int(autosave_minutes*60000)
     save()
 
+## The world (world.json, its journal folded in): the server has no player,
+## so no save of its own; its areas are saved as they change (their records)
+## and as they are made (their snapshots).
 func save()->bool:
-    if _saving or main==null or not main.coop_game.active:return false
+    if _saving or coop==null or not coop.active:return false
     _saving=true
-    # Only the server's own part (host.save): a load takes its area from the
-    # area's save (coop_game.gd _restore_latest_host_area), which save_game
-    # makes. The whole capture was 14-19 ms of one frame.
-    var captured:Dictionary=main._capture_game_save(2,true)
-    await get_tree().process_frame
-    var saved:bool=await main.coop_game.save_game(captured)
+    var saved:bool=await coop.save_checkpoint({"world_name":world_name})
     _saving=false
     print("SERVER world saved" if saved else "SERVER ERROR: world save failed")
     # Each save of an area is a new 2.4 MB file; those nothing needs any more
     # went only when the world was next loaded (coop_snapshot_store.gd clean_up).
-    if saved:main.coop_game._clean_up_area_files()
+    if saved:coop._clean_up_area_files()
     return saved
 
 func _notification(what:int)->void:
@@ -400,10 +389,10 @@ func _shutdown(restart:=false)->void:
     print("SERVER restarting..." if restart else "SERVER stopping...")
     await _unlist()
     while _saving:await get_tree().process_frame
-    if main!=null and main.coop_game.active:
+    if coop!=null and coop.active:
         await save()
         # Everyone still playing is told why, rather than "host disconnected".
-        var session:Node=main.coop_game.session
+        var session:Node=coop.session
         for peer in session.players.keys():
             if peer!=1:session.kick(peer,RESTARTING if restart else STOPPED)
         var deadline:=Time.get_ticks_msec()+3000
@@ -427,7 +416,7 @@ func _count_down()->void:
     _countdown_left-=1;_countdown_at+=1000
 
 func _broadcast(packet:Dictionary)->void:
-    var session:Node=main.coop_game.session
+    var session:Node=coop.session
     for peer in session.players:
         if peer!=1:session.send_to(peer,packet)
 
@@ -472,7 +461,7 @@ func _list_state()->String:
 ## Again every LIST_MS, or at once when players, the limit or the address change.
 func _announce()->void:
     if _list_url().is_empty() or _list_request.get_http_client_status()!=HTTPClient.STATUS_DISCONNECTED:return
-    var record:Dictionary=main.coop_game._lobby_record()
+    var record:Dictionary=coop._lobby_record()
     if record.is_empty():return
     # The address phones reach it by: the public one found at startup, else
     # the one the directory sees the request come from.
@@ -481,7 +470,7 @@ func _announce()->void:
     _list_sent=record;_list_next=Time.get_ticks_msec()+LIST_MS
     if _list_key.is_empty():_list_key=preload("res://scripts/coop_random.gd").hex(16)
     var body:=record.duplicate();body["key"]=_list_key
-    _list_request.request(_list_url(),main.coop_game.lobby._headers(_list_url(),true),HTTPClient.METHOD_POST,JSON.stringify(body))
+    _list_request.request(_list_url(),coop.lobby._headers(_list_url(),true),HTTPClient.METHOD_POST,JSON.stringify(body))
 
 func _list_reply(result:int,code:int,_headers:PackedStringArray,_body:PackedByteArray)->void:
     if _list_key.is_empty():return # the goodbye of _unlist
@@ -498,14 +487,14 @@ func _unlist()->void:
     var goodbye:=JSON.stringify({"key":_list_key,"remove":true})
     _list_key="";_list_sent={};_list_ok=-1
     _list_request.cancel_request()
-    if _list_request.request(_list_url(),main.coop_game.lobby._headers(_list_url(),true),HTTPClient.METHOD_POST,goodbye)!=OK:return
+    if _list_request.request(_list_url(),coop.lobby._headers(_list_url(),true),HTTPClient.METHOD_POST,goodbye)!=OK:return
     var answer:Array=await _list_request.request_completed
     print("SERVER removed from the online games list" if answer[0]==HTTPRequest.RESULT_SUCCESS and int(answer[1])==200 else "SERVER could not reach the online games list: the entry goes by itself in a minute")
 
 func _join()->void:
     var target:Dictionary=preload("res://scripts/coop_menu.gd").parse_address(joining)
     if target.is_empty():_fail("bad address "+joining);return
-    var coop:Node=main.coop_game
+    coop=main.coop_game
     coop.join_lobby={"name":joining,"address":target.address,"port":target.port,"direct":true,"private":false,"salt":"","account_id":account_id,"account_password":password if not account_id.is_empty() else ""}
     coop.join_password=password if account_id.is_empty() else ""
     print("CLIENT joining ",target.address,":",target.port)
@@ -525,6 +514,13 @@ func _join()->void:
         main.edge_travel_busy=false
         if not is_instance_valid(main) or main.current_world_grid!=Vector2i(1,0):_fail("travel to the next area failed");return
         print("CLIENT travelled to area ",coop._area())
+    if _see>0:
+        # Until that many other players are seen here, then a moment more:
+        # who is seen then (the smoke test's players see each other, never the server).
+        var until:=Time.get_ticks_msec()+180000
+        while coop.visuals.actors.size()<_see and Time.get_ticks_msec()<until:await get_tree().process_frame
+        await get_tree().create_timer(3.0).timeout
+        print("CLIENT sees ",coop.visuals.actors.size()," other players: ",", ".join(coop.visuals.actors.keys().map(func(actor):return String(actor).left(12))))
     if not _quit_after_join:return
     # Let this player's first checkpoint reach the host before leaving.
     await coop.checkpoint_player()

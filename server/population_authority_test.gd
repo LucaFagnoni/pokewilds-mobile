@@ -57,7 +57,6 @@ func check(ok: bool, what: String) -> void:
 class FakeGame extends Node:
     var active := true
     var hosting := true
-    var main := {"started": true}
     var state
     var rules := FakeRules.new()
     var clock_seconds := 1000.0
@@ -71,7 +70,6 @@ class FakeGame extends Node:
     ## ["motion", sender, area, motion, frame].
     var sent: Array = []
     var serial := 0
-    func _area() -> String: return "0,0"
     func _id() -> String:
         serial += 1
         return "t%d" % serial
@@ -120,11 +118,12 @@ static func area_sim(area: String) -> AreaSim:
 
 func _setup() -> void:
     state = State.new()
-    state.fixed_authority = "server"
-    for actor in ["server", "alice", "bob"]:
+    # The server is no player: no member, no record, in no area (coop_state.gd SERVER).
+    state.fixed_authority = State.SERVER
+    for actor in ["alice", "bob"]:
         state.enroll(actor, {"name": actor})
         state.records["player/" + actor] = {"party": [{"species": "slowpoke", "level": 20}], "inventory": {}, "save": {}}
-    state.enter("server", "0,0")
+    check(State.SERVER == "server" and not state.members.has(State.SERVER), "the server is no member")
     var changes: Array = []
     var next_id := 1
     for area in AREAS:
@@ -143,7 +142,8 @@ func _setup() -> void:
             changes.append(state.change(Records.key(area, "deployed_pokemon", cell), Delta.encode(habitat)))
         var egg := {"species": "pidgey", "x": 20, "y": 20, "is_egg": true, "parent_ids": ["wild:1", "wild:2"], "egg_groups": ["EGG_FLYING", "EGG_FLYING"]}
         changes.append(state.change(Records.key(area, "wild_eggs", Vector2i(20, 20)), Delta.encode(egg)))
-    check(state.transact("server", "setup", changes).get("ok", false), "the areas' records are written")
+    check(state.transact("server", "setup", changes).get("ok", false), "the areas' records are written, the server committing all the same")
+    check(not state.transact("nobody", "setup2", [state.change("x", 1)]).get("ok", false), "but no one else who is not a member")
     game = FakeGame.new()
     game.state = state
     game.wild.sent = game.sent

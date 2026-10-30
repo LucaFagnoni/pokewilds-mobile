@@ -108,7 +108,7 @@ func areas()->Array:
     return found
 
 func _process(delta:float)->void:
-    if not enabled or not is_instance_valid(game) or not game.active or not game.hosting or not game.main.started:return
+    if not enabled or not is_instance_valid(game) or not game.active or not game.hosting:return
     var started:=Time.get_ticks_usec()
     _worked=false
     var occupied:=areas()

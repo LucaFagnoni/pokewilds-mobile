@@ -515,6 +515,8 @@ func initialize_ids()->bool:
     # step after minutes of loading.
     var deadline:=Time.get_ticks_msec()+(15000 if game.hosting else 60000)
     while true:
+        # A dedicated server is no player to send itself a command: it takes its namespace.
+        if Server.active:result=execute(game.session.actor,"","wild_namespace",{});break
         result=await game.command("wild_namespace",{})
         var reason:=String(result.get("reason",""))
         var waiting:bool=reason=="busy" or (reason=="disconnected" and not game.hosting and game.session.trusted)

@@ -100,11 +100,7 @@ const BATTLE_TEXT_CHAR_DELAY := 0.05
 const MESSAGE_HOLD_SECONDS := 1.2
 const ITEM_MENU_VISIBLE_ROWS := 5
 const EGG_HATCH_STEPS := 20 * PokemonEcology.EGG_STEP_INTERVAL
-const STARTING_INVENTORY := {
-    "POTION":0,
-    "SLEEPING BAG":1,
-    "ESCAPE ROPE":1
-}
+const STARTING_INVENTORY := CraftingData.STARTING_INVENTORY
 
 const POKEMON_TEXTURES := {
     "pidgey": preload("res://assets/pokemon_pidgey.png"),

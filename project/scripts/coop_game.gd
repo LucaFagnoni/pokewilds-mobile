@@ -41,14 +41,17 @@ var lobby_password:=""
 var lobby_salt:=""
 var lobby_name:=""
 ## Where hosting listens and how many may play (the host included, 2 to
-## Session.MAX_PLAYERS; a dedicated server's own player is not counted). Set
-## before hosting; a dedicated server sets both.
+## Session.MAX_PLAYERS; a dedicated server is no player). Set before hosting;
+## a dedicated server sets both.
 var host_port:=preload("res://scripts/coop_join_code.gd").PORT
 var max_players:=4
 ## A dedicated server makes new areas itself: (actor, area, token) -> true once
 ## handled. Without it, or when it fails, the arriving player's device makes it.
 var generate_area:Callable
 const Server=preload("res://scripts/dedicated_server.gd")
+## Where a player new to a dedicated server's world starts: its first area
+## (made when the first player comes, as every new area is), on its spawn cell.
+const SPAWN_AREA:="0,0"
 var join_lobby:Dictionary={}
 var join_password:=""
 var notice:=""
@@ -118,9 +121,9 @@ func _flush_area(area:String)->bool:
     var owner=String(state.authority.get(area,""))
     if owner.is_empty():return true
     if owner==session.actor:
-        # An area a server runs without drawing it is all in the records, as
-        # is every area of a dedicated server (coop_population_authority.gd).
-        if area!=_area() or Server.active:return true
+        # An area a server runs without drawing it is all in the records (a
+        # dedicated server's are all: it plays in none, _area()).
+        if area!=_area():return true
         # In a frame of its own: the area's Pokemon folded in and the area
         # captured come to several ms, on top of the request that asked for
         # it (its records sent to the player): together 15-20 ms.
@@ -606,9 +609,7 @@ func command(operation:String,args:Dictionary)->Dictionary:
     if not ahead.is_empty():packet["after"]=ahead.id
     if operation=="deploy":args["base"]=profile_base
     var result:Dictionary
-    # A dedicated server's own player is nowhere: no presence to be found by.
-    if hosting and Server.active:result=commands.execute(session.actor,packet)
-    elif hosting:
+    if hosting:
         commands.presence[session.actor]={"area":scope(),"x":cell.x,"y":cell.y,"battle":main.battle_active,"fx":int(main.world.player.facing.x),"fy":int(main.world.player.facing.y),"population_scope":population.local_scope()}
         for index in range(main.caught_pokemon.size()):
             if main._storage_is_active(main.caught_pokemon[index]):commands.presence[session.actor]["helper_slot"]=index;break
@@ -737,6 +738,8 @@ func _committed(commit:Dictionary)->void:
         var group:String=(actor if personal else "")+"|"+",".join(areas)
         if not encoded.has(group):encoded[group]=_visible_frames(commit,actor,areas,personal,deltas)
         for bytes in encoded[group]:session.send_bytes_to(peer,bytes)
+    # A dedicated server has no player of its own to show it to.
+    if Server.active:return
     var own:Dictionary=Commands.visible_result(commit,session.actor)
     own["profile_base"]=state.print_of("player/"+session.actor,{})
     _apply_visible(own)
@@ -1039,8 +1042,9 @@ func _process(delta:float)->void:
     if _area_cleanup!=null and not _area_cleanup.is_alive():
         var removed:int=_area_cleanup.wait_to_finish();_area_cleanup=null
         if removed>0:print("ONLINE removed ",removed," area files no longer in use")
-    if not active or not session.trusted or not main.started:return
-    session.set_loading(main.generating or main.edge_travel_busy)
+    # A dedicated server has no World: it plays from the moment it hosts.
+    if not active or not session.trusted or not (Server.active or main.started):return
+    if not Server.active:session.set_loading(main.generating or main.edge_travel_busy)
     var now=Time.get_ticks_msec()
     if hosting:
         clock_seconds+=delta
@@ -1050,12 +1054,14 @@ func _process(delta:float)->void:
             _clock_sent=now;_clock_sent_speed=Engine.time_scale
             for peer in session.players:
                 if peer!=1:session.send_to(peer,{"kind":"world_clock","seconds":clock_seconds,"speed":Engine.time_scale})
-    if hosting and now-_journal_checked>=20000 and not _checkpoint_running and not _request_busy and not _publishing and not _world_writing and not interaction_ui.visible and not main.generating and not main.edge_travel_busy and not main.battle_active:
+    if hosting and now-_journal_checked>=20000 and not _checkpoint_running and not _request_busy and not _publishing and not _world_writing and not _player_busy():
         _journal_checked=now
         if _world_saved_at==0:_world_saved_at=now
         var fold:bool=State.journal_enabled and (store.journal_size()>JOURNAL_COMPACT_BYTES or (state.loose>0 and now-_world_saved_at>=MOTION_SAVE_MS))
         # Only the host's own part: a load takes its area from the area's save.
-        if fold:_fold_journal(main._capture_game_save(2,true))
+        if fold:_fold_journal(main._capture_game_save(2,true) if not Server.active else {"world_name":lobby_name})
+    # The rest saves this game's own player: a dedicated server has none.
+    if Server.active:return
     if now-_last_checkpoint>=750 and not _checkpoint_running and not _request_busy and not interaction_ui.visible and not main.generating and not main.edge_travel_busy:
         _last_checkpoint=now
         # The full record is large, and position updates share its connection.
@@ -1071,6 +1077,11 @@ func _process(delta:float)->void:
         var saved:bool=await checkpoint_player()
         if saved:_saved_stamp=stamp
         _checkpoint_running=false
+
+## True while this game's own player is in the middle of something a world
+## save waits for (a dedicated server has no player).
+func _player_busy()->bool:
+    return not Server.active and (interaction_ui.visible or main.generating or main.edge_travel_busy or main.battle_active)
 
 func _fold_journal(captured:Dictionary)->void:
     if not await save_checkpoint(captured):print("ONLINE journal could not be folded into a world save")
@@ -1110,8 +1121,8 @@ func _mode_label(text:String)->void:
 
 func _lobby_record()->Dictionary:
     if not active or not hosting:return {}
-    # A dedicated server's own player is not one of the players.
-    var players:int=session.players.size()-(1 if Server.active else 0)
+    # A dedicated server is not one of its players (Session.configure_server).
+    var players:int=session.players.size()
     return {"name":lobby_name,"host":String(session.profile.get("name","PLAYER")),"private":lobby_private,
         "players":players,"max":max_players,"salt":lobby_salt,"protocol":Session.PROTOCOL,"mods":session.mod_digest,"port":host_port,
         "accounts":session.accounts!=null,"kind":"server" if Server.active else "game","version":Session.build_version(),"compat":Session.compat_id()}
@@ -1286,8 +1297,8 @@ func game_started()->bool:
     var error:Error=session.host(world_id,host_port)
     if error!=OK:_failure("HOST COULD NOT START: "+error_string(error));return false
     # Connections at once: everyone but a hosting player, who is already in.
-    max_players=clampi(max_players,1 if Server.active else 2,Session.MAX_PLAYERS)
-    session.transport.max_peers=max_players-(0 if Server.active else 1)
+    max_players=clampi(max_players,2,Session.MAX_PLAYERS)
+    session.transport.max_peers=max_players-1
     # The world name is the lobby name other players see in JOIN GAME.
     lobby_name=String(checkpoint.get("world_name","WORLD")).strip_edges().left(24)
     lobby_salt=_id()
@@ -1297,25 +1308,102 @@ func game_started()->bool:
     # A phone stops hosting when the screen locks or the player switches apps.
     if OS.has_feature("mobile"):show_notice("","hosting")
     endpoints=preload("res://scripts/coop_join_code.gd").local_endpoints()
-    # A dedicated server's player is in no area: its own is run as an AreaSim
-    # like any other (coop_population_authority.gd), never by its World.
-    if not Server.active:
-        var entry=service.areas.enter(session.actor,_area());area_authority=String(entry.get("authority",""));area_epoch=int(entry.get("epoch",0));visuals.set_area(_area())
+    var entry=service.areas.enter(session.actor,_area());area_authority=String(entry.get("authority",""));area_epoch=int(entry.get("epoch",0));visuals.set_area(_area())
     if not await wild.initialize_ids():return false
     await checkpoint_player()
     _travelling_box_enter.call_deferred()
     return true
 
+## Dedicated server (dedicated_server.gd): hosts the world named `world_name`,
+## with no player and no World of its own: it holds the state, the journal and
+## the areas, each an AreaSim while players are in it (coop_rules_runtime.gd,
+## coop_population_authority.gd). The world of that name in online_worlds
+## (find_world) is loaded; without one a new world begins with no area at all:
+## the first is made when the first player comes (SPAWN_AREA), as every new
+## area is (generate_area). "" once it hosts, else why it could not.
+func serve(world_name:String)->String:
+    var mods:=Identity.mods()
+    if mods.has("error"):return String(mods.error)
+    session.configure_server(State.SERVER,String(mods.digest),{"name":"SERVER"})
+    lobby_name=world_name
+    world_id=find_world(world_name)
+    var loading:=not world_id.is_empty()
+    if not loading:world_id=preload("res://scripts/coop_random.gd").hex(16)
+    if store.open(world_id)!=OK:return "the world's folder could not be opened"
+    if loading:store.backup()
+    state=State.new();commands.state=state;commands.items.state=state;commands.interactions.state=state;visuals.state=state
+    if server_population:state.fixed_authority=State.SERVER
+    population_authority.enabled=server_population
+    var metadata:Dictionary={}
+    if loading:
+        metadata=store.load_state(state)
+        if metadata.is_empty():return "its state could not be read"
+        _clean_up_area_files()
+    state.commit_writer=store.append;session.transport.journal=store
+    if not _no_server_player(String(metadata.get("owner",""))):return "it could not be moved on to a server with no player"
+    if not wild.recover() or not population_battles.recover() or not events.recover():return "its encounters could not be recovered"
+    active=true;hosting=true;Cache.online_namespace=world_id
+    preload("res://scripts/crafting_data.gd").online_enabled=true
+    clock_seconds=float(state.records.get("clock",{}).get("seconds",0.0))
+    if not _create_service():return "its area files could not be opened"
+    if not await save_checkpoint({"world_name":world_name}):return "it could not be saved"
+    var named:=FileAccess.open(store.directory.path_join(world_id).path_join(WORLD_NAME),FileAccess.WRITE)
+    if named==null:return "its name could not be written"
+    named.store_string(world_name);named.close()
+    var error:Error=session.host(world_id,host_port)
+    if error!=OK:return "port %d: %s"%[host_port,error_string(error)]
+    max_players=clampi(max_players,1,Session.MAX_PLAYERS);session.transport.max_peers=max_players
+    lobby_salt=_id()
+    session.access_proof=Lobby.proof(lobby_salt,lobby_password) if lobby_private else ""
+    session.access_salt=lobby_salt
+    Network.start();Network.host_open();lobby.advertise(_lobby_record)
+    endpoints=preload("res://scripts/coop_join_code.gd").local_endpoints()
+    # Its own namespace of wild ids, for the Pokemon of a horde it brings.
+    if not await wild.initialize_ids():return "its wild Pokemon ids could not be set up"
+    return ""
+
+## The name of a dedicated server's world, beside its world.json.
+const WORLD_NAME:="name.txt"
+
+## The id of the world named `world_name` in online_worlds, by its name file
+## (WORLD_NAME), or for one a server made while it still had a player, by its
+## host.save; the newest when several have that name, "" when none has.
+func find_world(world_name:String)->String:
+    var found:=""
+    var newest:=-1
+    if not DirAccess.dir_exists_absolute(store.directory):return found
+    for id in DirAccess.get_directories_at(store.directory):
+        if not Store.valid_id(id):continue
+        var home:String=store.directory.path_join(id)
+        var named:String=FileAccess.get_file_as_string(home.path_join(WORLD_NAME)) if FileAccess.file_exists(home.path_join(WORLD_NAME)) else saves.world_name(id)
+        var modified:=FileAccess.get_modified_time(home.path_join("world.json"))
+        if named==world_name and modified>newest:found=id;newest=modified
+    return found
+
+## A world a dedicated server hosted while it still had a player of its own
+## (its owner, "SERVER"): that player goes, record and private box, so the
+## world has only real players. Its wild ids' namespace stays (Pokemon with
+## those ids live in the world). True when done, or when there was none.
+func _no_server_player(owner:String)->bool:
+    if owner.is_empty() or owner==State.SERVER:return true
+    state.members.erase(owner)
+    var changes:Array=[]
+    for key in ["player/"+owner,"private_box/"+owner]:
+        if state.records.has(key):changes.append(state.change(key,null))
+    if changes.is_empty():return true
+    var result:Dictionary=state.transact(State.SERVER,"noplayer/"+_id(),changes)
+    if result.get("ok",false):print("SERVER this world's SERVER player is gone: the server is no player any more")
+    return bool(result.get("ok",false))
+
+## The area this game's player is in; "" on a dedicated server, which has no
+## player and is in none (it holds every area as an AreaSim, coop_population_authority.gd).
 func _area()->String:
-    return "%d,%d"%[main.current_world_grid.x,main.current_world_grid.y]
+    return "" if Server.active else "%d,%d"%[main.current_world_grid.x,main.current_world_grid.y]
 
 func publish_current(own_population:bool=false)->bool:
     # The one who places a new area's Pokemon sends them, authority or not
     # (a server may be every area's: the host checks it is that one).
     if not own_population and not area_authority.is_empty() and area_authority!=session.actor:return true
-    # A dedicated server's World made the world's first area, and that is all:
-    # once saved, the area is an AreaSim's like any other, kept in the records.
-    if Server.active and state.records.has("area/"+_area()):return true
     # Do not put an optimistic, not-yet-paid placement into an area snapshot.
     # This waits only for this player's action, never for other players to stop.
     while building.busy or population.busy:
@@ -1398,9 +1486,13 @@ func save_checkpoint(data:Dictionary)->bool:
     for key in host:
         if key!="crafting_state" and (host[key] is Dictionary or host[key] is Array):host[key]=host[key].duplicate(true)
     var path:String=saves.path_for(world_id);var id:String=world_id;var actor:String=session.actor
+    # A dedicated server has no player, so no save of its own: its world is
+    # all in world.json and the journal.
+    var own_save:=not Server.active
     var written:Array=await _off_thread(func():
         var world:Error=Store.write(job) if not job.is_empty() else ERR_INVALID_PARAMETER
-        return [world,Saves.write(path,id,actor,host) if world==OK else ERR_SKIP])
+        if world!=OK:return [world,ERR_SKIP]
+        return [world,Saves.write(path,id,actor,host) if own_save else OK])
     var saved:bool=written[0]==OK
     if saved:state.loose=maxi(0,state.loose-loose);_world_saved_at=Time.get_ticks_msec()
     _world_writing=false
@@ -1496,13 +1588,14 @@ func _player_notice(peer:int,player:String,event:String)->void:
     show_notice(player,event)
 
 func show_notice(player:String,event:String)->void:
-    if not NOTICE_TEXT.has(event):return
+    # A dedicated server shows nothing: it says it its own way (dedicated_server.gd).
+    if not NOTICE_TEXT.has(event) or Server.active:return
     if not is_instance_valid(_notice_label):
         _notice_box=HudStyle.chip(chat.hud,"OnlineNotice");_notice_box.z_index=340
         _notice_label=_notice_box.get_node("Text")
         _notice_label.add_theme_constant_override("line_spacing",NOTICE_LINE-roundi(HudStyle.FONT.get_height(HudStyle.FONT_SIZE)))
     var text:=String(NOTICE_TEXT[event]).replace("%s",player.strip_edges().left(24).to_upper())
-    if not Server.active:print("ONLINE notice: ",text.replace("\n"," ")) # the server says it its own way
+    print("ONLINE notice: ",text.replace("\n"," "))
     # Wrapped and centred as the newest chat message (coop_chat.gd), which goes under it.
     chat.fit(_notice_box,text,chat.room(),NOTICE_LINE)
     _notice_box.position=Vector2(roundf(chat.centre()-_notice_box.size.x/2.0),main.touch_controls.usable_rect.position.y+HudStyle.MARGIN+float(main.status_hud.row_height())+HudStyle.GAP)
@@ -1515,26 +1608,41 @@ func show_notice(player:String,event:String)->void:
 ## Host: players sent the records on being let in who have not entered yet.
 var _join_records_sent:Dictionary={}
 
+## What a dedicated server gives a player new to its world (_admitted fills in
+## the rest): no position, so their World puts them on the spawn cell of the
+## first area, SPAWN_AREA, as a new single-player game does.
+func _first_game()->Dictionary:
+    return {"version":2,"world_name":lobby_name,"options":preload("res://scripts/game_options.gd").values.duplicate(),
+        "world_grid_x":int(SPAWN_AREA.get_slice(",",0)),"world_grid_y":int(SPAWN_AREA.get_slice(",",1))}
+
+## A new player's Machop on a dedicated server (main.gd _make_starter_machop
+## on a phone host), theirs from the start.
+static func _starter(player_name:String)->Dictionary:
+    var rng:=RandomNumberGenerator.new();rng.randomize()
+    return preload("res://scripts/battle_engine.gd").make_pokemon("machop",5,rng,{"original_trainer":player_name.strip_edges(),"met_location":"STARTING SHORE"})
+
 func _admitted(peer:int,actor:String,profile:Dictionary)->void:
     state.enroll(actor,profile)
     _join_sequence+=1;_joined_at[peer]=_join_sequence
     _player_notice(peer,String(profile.get("name","PLAYER")),"loading")
-    while _publishing:
-        await get_tree().process_frame
-        if not session.players.has(peer):return
-    if not await publish_current():session.transport._drop(peer);return
+    # A dedicated server has no World of its own to bring up to date first.
+    if not Server.active:
+        while _publishing:
+            await get_tree().process_frame
+            if not session.players.has(peer):return
+        if not await publish_current():session.transport._drop(peer);return
     # The host's own crafting state is replaced below: its personal part only.
-    var data:Dictionary=main._capture_game_save(2,true)
+    var data:Dictionary=main._capture_game_save(2,true) if not Server.active else _first_game()
     # A new guest starts with their own party and inventory, never the host's.
     var personal:Dictionary=state.records.get("player/"+actor,{})
     var saved_personal:Dictionary=personal.get("save",{})
-    var destination=_area()
+    var destination=_area() if not Server.active else SPAWN_AREA
     if not saved_personal.is_empty():
         var saved_area="%d,%d"%[int(saved_personal.get("world_grid_x",0)),int(saved_personal.get("world_grid_y",0))]
         if state.records.has("area/"+saved_area):
             data=saved_personal.duplicate(true);destination=saved_area
-    data["caught_pokemon"]=personal.get("party",[main._make_starter_machop()])
-    data["inventory"]=personal.get("inventory",main.STARTING_INVENTORY.duplicate(true))
+    data["caught_pokemon"]=personal.get("party",[main._make_starter_machop() if not Server.active else _starter(String(profile.get("name","PLAYER")))])
+    data["inventory"]=personal.get("inventory",preload("res://scripts/crafting_data.gd").STARTING_INVENTORY.duplicate(true))
     data["pokemon_storage"]={}
     data["preferred_storage_box"]=String(saved_personal.get("preferred_storage_box",""))
     data["coop_respawn"]=saved_personal.get("coop_respawn",{}).duplicate(true)
@@ -1543,8 +1651,9 @@ func _admitted(peer:int,actor:String,profile:Dictionary)->void:
     data["adjacent_worlds"]={};data["crafting_state"]={}
     data["player_name"]=profile.get("name","PLAYER");data["player_name_custom"]=true
     data["player_model"]=profile.get("model",0);data["player_color"]=profile.get("color",0)
-    # Spawn beside the host in the same scene; shared crafting arrives separately.
-    data["coop_personal"]=(saved_personal.crafting_state if saved_personal.has("crafting_state") else Snapshot.split(main.world.get_crafting_save_state(false),false).personal).duplicate(true)
+    # Spawn beside the host in the same scene (on a dedicated server, on the
+    # first area's spawn, nothing of it explored); shared crafting arrives separately.
+    data["coop_personal"]=(saved_personal.crafting_state if saved_personal.has("crafting_state") else ({} if Server.active else Snapshot.split(main.world.get_crafting_save_state(false),false).personal)).duplicate(true)
     data.coop_personal.erase("follower_pokemon");data.coop_personal.erase("active_field_move");data.coop_personal.erase("active_field_pokemon")
     if personal.is_empty():
         personal={"party":data.caught_pokemon,"inventory":data.inventory,"save":{}}
@@ -1693,8 +1802,7 @@ func _keep_client_log(peer:int,actor:String,packet:Dictionary)->void:
 
 func _broadcast_authority()->void:
     if not hosting or not is_instance_valid(service):return
-    # A dedicated server's World runs no area, whoever's authority it is.
-    if not Server.active:area_authority=String(state.authority.get(_area(),""));area_epoch=int(service.areas.epochs.get(_area(),0))
+    area_authority=String(state.authority.get(_area(),""));area_epoch=int(service.areas.epochs.get(_area(),0))
     for peer in session.players:
         if peer!=1:session.send_to(peer,{"kind":"area_authorities","owners":state.authority,"epochs":service.areas.epochs})
 
