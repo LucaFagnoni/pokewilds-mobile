@@ -28,6 +28,7 @@ static func write(path:String,id:String,actor:String,data:Dictionary)->Error:
         if error!=OK:return error
     return DirAccess.rename_absolute(path+".pending",path)
 
+## `actor` "" takes the save whoever's it is (world_name).
 static func _read(path:String,id:String,actor:String)->Dictionary:
     if not FileAccess.file_exists(path):return {}
     var parser=JSON.new()
@@ -38,8 +39,17 @@ static func _read(path:String,id:String,actor:String)->Dictionary:
     if parser.parse(envelope.payload)!=OK:return {}
     var value=parser.data
     if not value is Dictionary or value.get("mode")!="online" or value.get("format")!=1:return {}
-    if value.get("id")!=id or value.get("owner")!=actor or not value.get("game") is Dictionary:return {}
+    if value.get("id")!=id or (value.get("owner")!=actor and not actor.is_empty()) or not value.get("game") is Dictionary:return {}
     return value.game
+
+## The world's name in its host.save, whoever hosted it: how a dedicated
+## server finds a world it hosted while it had a player (coop_game.gd find_world).
+func world_name(id:String)->String:
+    var path:=path_for(id)
+    if path.is_empty():return ""
+    var data:=_read(path,id,"")
+    if data.is_empty():data=_read(path+".bak",id,"")
+    return String(data.get("world_name",""))
 
 func load_host(id:String,actor:String)->Dictionary:
     var path=path_for(id)

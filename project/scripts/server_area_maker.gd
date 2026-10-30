@@ -51,24 +51,25 @@ func _breathe()->void:
 func generate_here()->bool:
     return in_process=="on" or (in_process=="auto" and NativeWorldGen.enabled())
 
-## Server side. False only when the area could not be made here.
-func make(main:Node,actor:String,area:String,token:String)->bool:
+## Server side, for the server's coordinator (coop_game.gd). `size_index`:
+## the area's size, -1 for area_size's. False only when the area could not be
+## made here.
+func make(coop:Node,actor:String,area:String,token:String,size_index:=-1)->bool:
     while _busy:await get_tree().process_frame
     # Waiting behind another area, this one may have been made or given up.
-    if main.coop_game.service.areas.reservations.get(area,{}).get("token","")!=token:return true
+    if coop.service.areas.reservations.get(area,{}).get("token","")!=token:return true
     _busy=true
-    var made:bool=generate_here() and await _make_here(main,actor,area,token)
-    if not made:made=await _make(main,actor,area,token)
+    if size_index<0:size_index=area_size if area_size>=0 else randi_range(1,4)
+    var made:bool=generate_here() and await _make_here(coop,actor,area,token,size_index)
+    if not made:made=await _make(coop,actor,area,token,size_index)
     _busy=false
     return made
 
 ## The area made in this process, on a worker; false when that failed.
-func _make_here(main:Node,actor:String,area:String,token:String)->bool:
+func _make_here(coop:Node,actor:String,area:String,token:String,size_index:int)->bool:
     var seed_value:=randi_range(1,2147483646)
-    var size_index:=area_size if area_size>=0 else randi_range(1,4)
     var started:=Time.get_ticks_msec()
     print("SERVER making new area ",area," here (",("native" if NativeWorldGen.enabled() else "GDScript")," generator)...")
-    var coop:Node=main.coop_game
     var made:Dictionary=await coop._off_thread(func():return area_of(seed_value,size_index))
     if made.is_empty():
         print("SERVER ERROR: area ",area," could not be made in this process; trying a second one")
@@ -152,7 +153,7 @@ static func first_population(tiles,megas:Dictionary,seed_value:int,party_level:i
         if state.event_progress.has(key):events[key]=state.event_progress[key]
     return {"wild_pokemon":found[1],"event_progress":events}
 
-func _make(main:Node,actor:String,area:String,token:String)->bool:
+func _make(coop:Node,actor:String,area:String,token:String,size_index:int)->bool:
     var folder:=Paths.path("area_maker")
     DirAccess.make_dir_recursive_absolute(folder)
     var job:=folder.path_join("job.json")
@@ -160,8 +161,8 @@ func _make(main:Node,actor:String,area:String,token:String)->bool:
     DirAccess.remove_absolute(out)
     var file:=FileAccess.open(job,FileAccess.WRITE)
     if file==null:return false
-    file.store_string(JSON.stringify({"seed":randi_range(1,2147483646),"size":area_size if area_size>=0 else randi_range(1,4),
-        "options":GameOptions.values,"world":String(main.world_edit.text),"out":out}))
+    file.store_string(JSON.stringify({"seed":randi_range(1,2147483646),"size":size_index,
+        "options":GameOptions.values,"world":String(coop.lobby_name),"out":out}))
     file.close()
     var args:=["--headless","--generate-area",job]
     if OS.has_feature("editor"):args=["--path",ProjectSettings.globalize_path("res://")]+args
@@ -173,7 +174,7 @@ func _make(main:Node,actor:String,area:String,token:String)->bool:
         if Time.get_ticks_msec()-started>TIMEOUT_MS:OS.kill(pid);break
         await get_tree().process_frame
     # Read and decoded on a worker: the snapshot is megabytes (15 ms here).
-    var made:Array=await main.coop_game._off_thread(func():
+    var made:Array=await coop._off_thread(func():
         var read:=FileAccess.get_file_as_bytes(out)
         return [read,Snapshot.decode(read) if not read.is_empty() else {}])
     var bytes:PackedByteArray=made[0]
@@ -183,7 +184,7 @@ func _make(main:Node,actor:String,area:String,token:String)->bool:
     if decoded.is_empty():
         print("SERVER ERROR: area ",area," could not be made here; the player's device will make it")
         return false
-    var result:Dictionary=await main.coop_game.service.generated(actor,area,token,{"seed":decoded.seed,"size":decoded["size"]},bytes,decoded)
+    var result:Dictionary=await coop.service.generated(actor,area,token,{"seed":decoded.seed,"size":decoded["size"]},bytes,decoded)
     print("SERVER made area ",area," in ",(Time.get_ticks_msec()-started)/1000,"s" if result.get("ok",false) else ", but it was no longer wanted (%s)"%result.get("reason",""))
     return true
 

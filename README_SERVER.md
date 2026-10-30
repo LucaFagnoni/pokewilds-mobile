@@ -11,7 +11,7 @@ quando escono tutti.
    Estrailo in una cartella, per esempio `C:\PokeWilds-Server`.
 2. **Doppio clic su `start_server.bat`.** La prima volta Windows chiede il
    permesso di aprire il firewall per PokeWilds: rispondi **Sì**. Dopo qualche
-   istante (qualche minuto per un mondo grande) il server scrive:
+   istante il server scrive:
 
    ```
    SERVER  Same Wi-Fi:     192.168.1.14:54555   code 1HGE13I2
@@ -239,27 +239,41 @@ Se il server è raggiungibile da Internet e vuoi scegliere tu chi gioca, usa
 `accounts=closed` e crea gli ID con `account add`: con `open` chiunque conosca
 l'indirizzo può crearsi un ID ed entrare.
 
-`PokeWilds.console.exe --headless --server` avvia il server senza il
-lanciatore: lì però Ctrl+C e la chiusura della finestra lo spengono **senza**
-salvare (limite di Godot), quindi usa `stop`.
+`PokeWilds.console.exe --headless res://scenes/server.tscn --server` avvia il
+server senza il lanciatore: lì però Ctrl+C e la chiusura della finestra lo
+spengono **senza** salvare (limite di Godot), quindi usa `stop`. Senza
+`res://scenes/server.tscn` funziona lo stesso, ma prima carica per un attimo
+la schermata del gioco (inutile su un server).
 
 ## Cosa fa il server per i telefoni
 
+- Il server **non è un giocatore**: non ha un personaggio, non sta in nessuna
+  zona, non conta tra i giocatori e nessuno lo vede. Tiene il mondo e fa
+  muovere i Pokémon di ogni zona dove c'è qualcuno, sempre allo stesso modo.
 - Le **zone nuove** della mappa, quando un giocatore ci entra per la prima
   volta, le crea il server (una seconda copia del gioco, invisibile, che si
   chiude da sola): il telefono aspetta "THIS AREA IS BEING CREATED" senza
   fare il lavoro pesante. Se il server non ci riesce, la crea il telefono
   come nel co-op normale.
-- Il server ha un suo giocatore **invisibile** fermo allo spawn: nessuno lo
-  vede, non conta tra i giocatori, i Pokémon non lo inseguono e le orde non
-  lo prendono di mira.
+- Un **mondo nuovo** parte senza zone: la prima la crea il server quando
+  entra il primo giocatore (con la taglia di `--size`), per questo il server
+  è pronto in pochi secondi anche per un mondo grande.
+- Chi entra per la **prima volta** parte dallo spawn della prima zona del
+  mondo; chi c'è già stato riparte da dove era uscito.
 
 ## I dati
 
 Tutto sta in `server_data` (accanto all'exe): per un backup copia la cartella
 a server spento. Il server tiene anche da sé le ultime 5 copie in
 `server_data\online_worlds\<id>\backups`. Più mondi possono convivere: cambia
-`--world` per passare dall'uno all'altro.
+`--world` per passare dall'uno all'altro. Ogni mondo è una cartella in
+`server_data\online_worlds` con il suo nome scritto in `name.txt`: per spostare
+un mondo su un altro server basta copiare la sua cartella.
+
+Un mondo creato da un server di prima (quando il server aveva ancora il suo
+giocatore invisibile "SERVER") si apre come sempre: la prima volta il server
+toglie quel giocatore dal mondo e lo scrive nella finestra ("this world's
+SERVER player is gone"). Giocatori, Pokémon e costruzioni restano com'erano.
 
 ## Limiti
 

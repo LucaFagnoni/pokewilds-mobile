@@ -108,7 +108,8 @@ func register_objects(area:String,shared:Dictionary)->bool:
         if game.state.records.get(key,{})!=record:changes.append(game.state.change(key,record))
         if not record.private and not game.state.records.has("box/"+id):
             var contents:Array=[]
-            for pokemon in game.main.pokemon_storage.get(id,[]):
+            # A box the host's own game already filled (none on a dedicated server).
+            for pokemon in (game.main.pokemon_storage.get(id,[]) if game.main!=null else []):
                 contents.append({"id":preload("res://scripts/coop_random.gd").hex(16),"pokemon":pokemon.duplicate(true)})
             changes.append(game.state.change("box/"+id,contents))
     if changes.is_empty():return true

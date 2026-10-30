@@ -2,7 +2,8 @@ extends Node
 ## The co-op side of the rules (rules/). The host is their authority: a
 ## player's field command (DIG, CUT, a build, a picture, a piece taken away)
 ## runs on the host's own copy of that player's area (its World's AreaState
-## for the area the host plays in, an AreaSim for any other), with the host's
+## for the area a phone host plays in, an AreaSim for any other, and for every
+## area on a dedicated server, which has no World of its own), with the host's
 ## random numbers, and what changed is committed in one transaction with what
 ## the player gained and paid and what it changes outside the area
 ## (coop_build_runtime.gd host_records). A player predicts its own commands
@@ -33,16 +34,23 @@ func configure(coordinator:Node)->void:
 ## Host: the AreaState the rules run on for `area`; null while its AreaSim
 ## loads (a load is started then).
 func state_for(area:String):
-    if area==game._area() and game.main.world.generated:return game.main.world.area
+    if area==game._area() and _own()!=null:return _own()
     var sim=sims.get(area)
     if sim!=null:return sim.state
     load_area(area)
     return null
 
+## The AreaState of this game's own World, which the rules run on for the area
+## it plays in; null before it is made, and on a dedicated server, whose areas
+## are all AreaSims (coop_population_authority.gd).
+const Server=preload("res://scripts/dedicated_server.gd")
+func _own():
+    return null if Server.active or not game.main.world.generated else game.main.world.area
+
 ## Host: loads `area`'s AreaSim on a worker (snapshot and records), unless it
 ## has one or is the host's own.
 func load_area(area:String)->void:
-    if not game.hosting or sims.has(area) or _loading.has(area) or area==game._area():return
+    if not game.hosting or sims.has(area) or _loading.has(area) or (area==game._area() and not Server.active):return
     var metadata:Dictionary=game.state.records.get("area/"+area,{})
     if not metadata.get("sha256") is String or not is_instance_valid(game.service):return
     _loading[area]=true
@@ -84,11 +92,13 @@ func _process(_delta:float)->void:
     var now:=Time.get_ticks_msec()
     var occupied:Dictionary={}
     for actor in game.state.members:occupied[String(game.state.members[actor].get("area",""))]=true
+    # A phone host's own area is its World's: an AreaSim of it is let go.
+    var own:String=game._area() if not Server.active else ""
     for area in sims.keys():
         var sim=sims[area]
-        if occupied.has(area) and area!=game._area():sim.empty_since=0
+        if occupied.has(area) and area!=own:sim.empty_since=0
         elif sim.empty_since==0:sim.empty_since=now
-        elif now-sim.empty_since>=KEEP_EMPTY_MS or area==game._area():
+        elif now-sim.empty_since>=KEEP_EMPTY_MS or area==own:
             sims.erase(area)
             # Let go of on a worker: freeing an area's tiles here took 8 ms.
             var held:Array=[sim];sim=null
@@ -151,7 +161,7 @@ func execute(actor:String,id:String,op:String,args:Dictionary)->Dictionary:
     # The host's own World shows it: all of it for the host's own action, the
     # ground and the pieces on it for another player's (what changed inside a
     # house is drawn from the records, coop_build_runtime.gd apply_records).
-    if area_state==game.main.world.area:
+    if area_state==_own():
         var shown:Array=COSMETIC if actor==game.session.actor else GROUND
         game.main.world.field_moves.play_rule({"events":result.events.filter(func(event):return event[0] in shown)})
     committed["events"]=Rules.answered(result.events)
@@ -179,14 +189,14 @@ func _player(actor:String,area:String,profile:Dictionary,cmd:Dictionary,args:Dic
         player["house_key"]=String(args.get("house_key",""))
         player["house_floor"]=bool(args.get("house_floor",false))
         var door=args.get("house_door")
-        if actor==game.session.actor and area_state==game.main.world.area:player["house"]=game.main.world.buildings.house_context()
+        if actor==game.session.actor and area_state==_own():player["house"]=game.main.world.buildings.house_context()
         elif door is Array and door.size()==2 and Rules._whole(door[0]) and Rules._whole(door[1]):
             player["house_door"]=Vector2i(int(door[0]),int(door[1]))
             if Rules._whole(args.get("house_origin")):player["house_origin"]=int(args.house_origin)
     return player
 
 func _redraw(area_state,cells:Array)->void:
-    if area_state==game.main.world.area and not cells.is_empty():game.main.world._refresh_exact_pickup_cells(cells)
+    if area_state==_own() and not cells.is_empty():game.main.world._refresh_exact_pickup_cells(cells)
 
 # --- The player's side ---------------------------------------------------------
 

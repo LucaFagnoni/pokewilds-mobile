@@ -1,4 +1,5 @@
-# Runs PokeWilds.exe --headless --server outside this console and shows its log.
+# Runs PokeWilds.exe --headless res://scenes/server.tscn --server outside this
+# console and shows its log (the scene is the server's own, not the game's screen).
 # A release build of Godot dies at once on Ctrl+C or when its console closes, so
 # the server never owns the console: Ctrl+C here sends it "stop", and closing
 # this window closes its input pipe, which the server also takes as "stop".
@@ -30,7 +31,7 @@ Add-Type -Namespace PokeWilds -Name Power -MemberDefinition '[DllImport("kernel3
 
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = $exe
-$psi.Arguments = (@('--headless', '--server') + $args) -join ' '
+$psi.Arguments = (@('--headless', 'res://scenes/server.tscn', '--server') + $args) -join ' '
 $psi.WorkingDirectory = $PSScriptRoot
 $psi.UseShellExecute = $false
 $psi.CreateNoWindow = $true

@@ -100,11 +100,7 @@ const BATTLE_TEXT_CHAR_DELAY := 0.05
 const MESSAGE_HOLD_SECONDS := 1.2
 const ITEM_MENU_VISIBLE_ROWS := 5
 const EGG_HATCH_STEPS := 20 * PokemonEcology.EGG_STEP_INTERVAL
-const STARTING_INVENTORY := {
-    "POTION":0,
-    "SLEEPING BAG":1,
-    "ESCAPE ROPE":1
-}
+const STARTING_INVENTORY := CraftingData.STARTING_INVENTORY
 
 const POKEMON_TEXTURES := {
     "pidgey": preload("res://assets/pokemon_pidgey.png"),
@@ -697,6 +693,12 @@ var shared_save_folder: Node
 var dark_mode_ui: Node
 
 func _ready() -> void:
+    # A dedicated server has no game screen: dedicated_server.gd hosts without
+    # it. Started without res://scenes/server.tscn, this scene still loads: it goes.
+    if preload("res://scripts/dedicated_server.gd").active:
+        set_process(false)
+        queue_free()
+        return
     _watch_screens()
     # Keep initialization and Android folder synchronization offscreen.
     $UI.hide()

@@ -73,8 +73,10 @@ static func clean_name(value:Variant)->String:
     var name:=clean(value,NAME_LENGTH).replace(":","").strip_edges()
     return name if not name.is_empty() else "PLAYER"
 
+## `owner_main` null: a dedicated server, which only relays (relay), with no screen.
 func configure(owner_main:Node,coordinator:Node)->void:
     main=owner_main;game=coordinator;session=game.session;z_index=350
+    if main==null:hide();return
     _lines=_label(self);_entry=_label(self)
     hud=Control.new();hud.name="OnlineHud";hud.mouse_filter=Control.MOUSE_FILTER_IGNORE;main.get_node("UI").add_child(hud)
     _log=HudStyle.chip(hud,"ChatLog");_log.z_index=340;_log.hide()

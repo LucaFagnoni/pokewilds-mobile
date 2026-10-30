@@ -9,6 +9,12 @@ the version description in Feather. Write it for players, not developers.
 - **PokeWilds on your computer:** the game now also comes for Windows, Mac and Linux (PokeWilds-win64.zip, PokeWilds-macos.zip, PokeWilds-linux-x86_64.tar.gz), and the dedicated server for Linux and Mac too (PokeWilds-Server-linux-x86_64.tar.gz, PokeWilds-Server-macos.zip, started with start_server.sh). On a Mac, right-click PokeWilds.app and choose Open the first time, because the app is not signed by Apple.
 - **Keyboard and mouse on your computer:** play with WASD or the arrows, Z or Space to act, X or Q to go back, Shift to run, Enter for the menu, C / V to change materials and pages, F for the field move wheel (or hold the right mouse button and aim with the mouse), R to throw, M for the map, P for the Pokedex, B to build and T to chat. The original PokeWilds keys (arrows, Z, X, Enter) still work. Click menu rows like you would tap them, drag the map, and use the wheel to zoom. Change any key or controller button in OPTIONS > CONTROLS. On a phone, the on-screen buttons now hide while you use a controller or keyboard and come back when you touch the screen.
 
+### Server and multiplayer
+- **The server is no longer a player:** a dedicated server used to be the whole game running with an invisible player of its own, standing at the spawn. Now it only keeps the world: it has no character, is never counted among the players and never shows up anywhere. Every area is run the same way, the one you start in included, so wild Pokémon, habitats, eggs, Megas and hordes behave there as everywhere else.
+- **New players start at the world's spawn:** joining a dedicated server for the first time now puts you on the spawn point of the world's first area, instead of next to the server's invisible player.
+- **A new world is ready in seconds:** the server no longer builds the first area of a new world before it opens. The first area is made when the first player arrives, like every new area (you see "THIS AREA IS BEING CREATED" for a moment), so the server starts at once even for a large world.
+- **Your server's world carries over:** the first time the new server opens a world, it removes the old invisible SERVER player from it. Players, their Pokémon and everything built stay as they were; there is nothing to do.
+
 ## 0.10.446
 
 ### Server and multiplayer

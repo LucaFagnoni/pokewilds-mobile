@@ -7,7 +7,7 @@ kind by the server and by every player:
   idleN      N players standing still in the spawn area
   walkN      N players walking in the spawn area
   walkNsplit N players walking, the odd ones in the area east of it
-  walkNaway  N players walking, all in the area east (the server's own area empty)
+  walkNaway  N players walking, all in the area east (the spawn area empty)
   walkNlong  (with --long S) N players walking back in the spawn area for S seconds,
              long enough for autosaves (--autosave MINUTES) and journal folds
   walkNfour  N players walking in four areas: one in four stays, the others go
@@ -128,7 +128,7 @@ try:
     time.sleep(3)
     measure(f"walk{clients}away")
     if long_seconds > 0:
-        # Everyone back in the spawn area (the server's own), walking for a long time.
+        # Everyone back in the spawn area, walking for a long time.
         set_phase(f"walk{clients}long-travel")
         deadline = time.time() + 600
         while sum(text(f"client{i}").count("travelled back") for i in range(clients)) < clients and time.time() < deadline: time.sleep(1)

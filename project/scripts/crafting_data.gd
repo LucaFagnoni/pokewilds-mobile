@@ -14,6 +14,8 @@ static func build_recipes()->Array:
     if _online_recipes.is_empty():_online_recipes=BUILD_RECIPES.duplicate();_online_recipes.append(PRIVATE_CHEST)
     return _online_recipes
 const ItemData = preload("res://scripts/item_data.gd")
+## A new player's bag (main.gd, and coop_game.gd for one new to a dedicated server).
+const STARTING_INVENTORY := {"POTION":0,"SLEEPING BAG":1,"ESCAPE ROPE":1}
 const MATERIALS := [
     "LOG", "GRASS", "MIRACLE SEED", "MANURE", "SOFT FEATHER",
     "HARD SHELL", "POISON BARB", "MAGNET", "CHARCOAL", "PSI ENERGY",

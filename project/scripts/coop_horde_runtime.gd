@@ -2,6 +2,7 @@ extends Control
 const Model=preload("res://scripts/coop_hordes.gd")
 const Delta=preload("res://scripts/coop_world_delta.gd")
 const Rules=preload("res://scripts/rules/population_rules.gd")
+const Server=preload("res://scripts/dedicated_server.gd")
 ## Never in a horde.
 const EXCLUDED:=["mew","mewtwo","articuno","moltres","zapdos","entei","suicune","raikou","celebi","lugia","hooh","ho-oh","arceus","regirock","regice","registeel","regigigas","volcarona","spiritomb","unownking"]
 var game:Node
@@ -41,6 +42,10 @@ func commit(result:Dictionary)->void:
     elif not result.get("ok",false) and result.get("reason")=="save_failed":game.end_session("HORDE EVENT COULD NOT BE SAVED.")
 
 func _process(_delta:float)->void:
+    # A dedicated server only calls the hordes and sees them through (host_tick).
+    if Server.active:
+        if game.active and Time.get_ticks_msec()-last_tick>=250:last_tick=Time.get_ticks_msec();host_tick()
+        return
     visible=game.active and game.main.started and not game.main.generating and not game.main.edge_travel_busy and not game.main._field_ui_blocks_gameplay()
     if not game.active or not game.session.trusted or not game.main.started or game.main.generating or game.main.edge_travel_busy:return
     if Time.get_ticks_msec()-last_tick<250:return
@@ -60,7 +65,8 @@ func _process(_delta:float)->void:
     queue_redraw()
 
 func host_tick()->void:
-    var night=1 if game.main.world._is_night_time() else 0
+    # A dedicated server has no World: night by the world's clock, as an area's.
+    var night=1 if (Rules.is_night({"clock":game.clock_seconds}) if Server.active else game.main.world._is_night_time()) else 0
     if last_night==0 and night==1 and settings().get("horde",true) and rng.randf()<0.17:
         var areas:Dictionary={}
         for actor in game.commands.presence:

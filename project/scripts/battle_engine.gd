@@ -77,6 +77,55 @@ static func make_pokemon(species: String, level: int,
     PokemonState.apply_stats(result, overrides.has("max_hp"), custom_base)
     return result
 
+## The Pokemon an egg (`egg_record`) hatches into, `species` at `level`: a
+## new one with what the egg carries (parents' moves, shininess, trainer...).
+## Egg collection adds its egg markers again afterward (field_pokemon.gd, and
+## coop_population_runtime.gd on a host, a dedicated server too).
+static func egg_pokemon(egg_record: Dictionary, species: String, level: int,
+        rng: RandomNumberGenerator) -> Dictionary:
+    var pokemon := make_pokemon(species, level, rng, egg_record)
+    # This helper produces the hatched Pokemon. Egg collection adds its egg
+    # markers again afterward, while actual hatching must not retain them.
+    for egg_property in ["is_egg", "egg_species", "hatch_cycles", "hatch_steps"]:
+        pokemon.erase(egg_property)
+    for property in [
+            "gender", "shiny", "is_shiny", "generation",
+            "parent_ids", "inherited_moves", "personality", "nature",
+            "ability_slot", "ivs", "evs", "original_trainer", "trainer_id",
+            "met_level", "met_location", "pokeball", "ribbons", "markings", "pokerus"
+        ]:
+        if egg_record.has(property):
+            pokemon[property] = egg_record[property]
+    if egg_record.has("shiny") or egg_record.has("is_shiny") or egg_record.has("isShiny"):
+        pokemon["shiny"] = PokemonData.is_shiny(egg_record)
+        pokemon["is_shiny"] = bool(pokemon["shiny"])
+
+    var moves: Array[String] = []
+    for raw_move in pokemon.get("moves", []):
+        moves.append(String(raw_move).to_upper().replace(" ", "_"))
+    var inherited_index := moves.size() if moves.size() < 4 else 0
+    var inherited = egg_record.get("inherited_moves", [])
+    if typeof(inherited) == TYPE_ARRAY:
+        for raw_move in inherited:
+            var move := String(raw_move).to_upper().replace(" ", "_")
+            if PokemonData.move_info(move).is_empty() or moves.has(move):
+                continue
+            if moves.size() < 4:
+                moves.append(move)
+            else:
+                moves[inherited_index] = move
+            inherited_index = (inherited_index + 1) % 4
+    pokemon["moves"] = moves
+    var pp := {}
+    for move in moves:
+        pp[move] = int(PokemonData.move_info(move).get("pp", 35))
+    pokemon["pp"] = pp
+    pokemon["hp"] = maxi(1, int(pokemon.get("max_hp", 1)))
+    pokemon["status"] = ""
+    pokemon["status_counter"] = 0
+    pokemon["toxic_counter"] = 0
+    return pokemon
+
 static func ensure_pokemon(source: Dictionary) -> Dictionary:
     var fresh := make_pokemon(String(source.get("species", "rattata")),
         int(source.get("level", 1)), null, source)

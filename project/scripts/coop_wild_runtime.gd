@@ -515,6 +515,8 @@ func initialize_ids()->bool:
     # step after minutes of loading.
     var deadline:=Time.get_ticks_msec()+(15000 if game.hosting else 60000)
     while true:
+        # A dedicated server is no player to send itself a command: it takes its namespace.
+        if Server.active:result=execute(game.session.actor,"","wild_namespace",{});break
         result=await game.command("wild_namespace",{})
         var reason:=String(result.get("reason",""))
         var waiting:bool=reason=="busy" or (reason=="disconnected" and not game.hosting and game.session.trusted)
@@ -597,7 +599,6 @@ func _process(_delta:float)->void:
     if sync_pending:
         sync_pending=false
         synchronize()
-    if game.nobody_here():return
     var world=game.main.world
     var simulate:bool=authority() and world.is_processing() and (not world.gameplay_enabled or world.active_area_id!="OVERWORLD")
     # world._update_wild_pokemon makes the list itself first.

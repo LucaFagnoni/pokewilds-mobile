@@ -6,9 +6,13 @@ var outcomes: Dictionary = {}
 var members: Dictionary = {}
 var authority: Dictionary = {}
 ## The actor who is the authority of every area (a dedicated server that runs
-## all areas' Pokemon, coop_population_authority.gd); "" to give an area to the
-## first player in it and, when they leave, to the next.
+## all areas' Pokemon, coop_population_authority.gd: SERVER); "" to give an
+## area to the first player in it and, when they leave, to the next.
 var fixed_authority := ""
+## The actor a dedicated server commits as. It is no player (a player's actor
+## is 64 hex digits), so never a member: in no area, with no record, not
+## counted. It may commit all the same (transact).
+const SERVER := "server"
 var commit_writer := Callable()
 const Patch = preload("res://scripts/coop_patch.gd")
 const MAX_CHANGES := 4096
@@ -139,7 +143,7 @@ func leave(actor: String) -> void:
 ## the receipt beside the changes it made. A replay applies the changes; the
 ## command says what they were for.
 func transact(actor: String, id: String, changes: Array, command_hash: String = "", durable: bool = true, typed: Dictionary = {}) -> Dictionary:
-    if not members.has(actor) or id.is_empty() or id.length() > 80:
+    if not (members.has(actor) or actor == SERVER) or id.is_empty() or id.length() > 80:
         return {"ok":false,"reason":"invalid_request"}
     var request_key := actor + "/" + id
     var request_hash := _request_print(changes)

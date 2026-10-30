@@ -17,7 +17,8 @@ fi
 [ -x "$exe" ] || { echo "PokeWilds not found or not executable: $exe"; exit 1; }
 
 # The data and the settings beside this script, also inside a macOS .app.
-args=(--headless --server)
+# The scene is the server's own, not the game's screen (server_launcher.ps1 does the same).
+args=(--headless res://scenes/server.tscn --server)
 case " $* " in *" --data "*) ;; *) args+=(--data "$dir/server_data") ;; esac
 case " $* " in *" --config "*) ;; *) args+=(--config "$dir/server.cfg") ;; esac
 

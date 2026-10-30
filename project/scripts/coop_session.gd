@@ -17,8 +17,8 @@ const Transport = preload("res://scripts/coop_transport.gd")
 ## (rules/build.gd, paint.gd, remove.gd: {"area", "cmd"}, no patches or record
 ## fingerprint), several of a player's in flight at once.
 const PROTOCOL := "pokewilds-godot-coop-10b"
-## Most players one game can have, a phone host included (a dedicated server's
-## own player does not count). The host relays every position update to each
+## Most players one game can have, a phone host included (a dedicated server
+## is no player). The host relays every position update to each
 ## other player in the same area, so its upload grows with the square of the
 ## players. Measured (a walking player's update packs to ~320 bytes, sent 20
 ## times a second): all 8 moving in one area is 1120 relays a second, ~350 KB/s
@@ -135,12 +135,18 @@ func configure(token: String, mods: String, player_profile: Dictionary) -> bool:
     profile=player_profile.duplicate(true)
     return true
 
+## A dedicated server: it hosts as `server_actor` (coop_state.gd SERVER), with
+## no identity of its own, and is not one of its players (no peer 1).
+func configure_server(server_actor: String, mods: String, server_profile: Dictionary) -> void:
+    identity="";actor=server_actor;mod_digest=mods
+    profile=server_profile.duplicate(true)
+
 func host(id: String, port: int = 54555, address: String = "*") -> Error:
-    if identity.is_empty() or id.is_empty():return ERR_UNCONFIGURED
+    if actor.is_empty() or id.is_empty():return ERR_UNCONFIGURED
     var error: Error=transport.host(port,address)
     if error!=OK:return error
     hosting=true;world_id=id;trusted=true;set_process(true)
-    players={1:{"actor":actor,"profile":profile.duplicate(true)}}
+    players={} if identity.is_empty() else {1:{"actor":actor,"profile":profile.duplicate(true)}}
     session_ready.emit(world_id,actor)
     return OK
 

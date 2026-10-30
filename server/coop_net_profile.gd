@@ -67,7 +67,13 @@ func _initialize() -> void:
 	first.process_priority = -2147483648
 	first.process_mode = Node.PROCESS_MODE_ALWAYS
 	root.add_child.call_deferred(first)
-	change_scene_to_file("res://scenes/main.tscn")
+	# The server has a scene of its own: its coordinator is DedicatedServerSingleton's (_host).
+	change_scene_to_file("res://scenes/server.tscn" if "--server" in OS.get_cmdline_args() else "res://scenes/main.tscn")
+
+## The server's coordinator (coop_game.gd), once it hosts; null before.
+func _host() -> Node:
+	var server := root.get_node_or_null("DedicatedServerSingleton")
+	return server.coop if server != null and server.coop != null and server.coop.active else null
 
 ## The first node to process: what ran before it this frame, from the
 ## process_frame signal on, is the coroutines resumed by it (a test build's
@@ -141,12 +147,12 @@ func _process(_delta: float) -> bool:
 	if main != null and is_instance_valid(main) and main.started and not "--server" in OS.get_cmdline_args():
 		_play(now)
 	if phase == "walk-breakdown" and not _breaking and "--server" in OS.get_cmdline_args(): _breakdown()
-	if phase == "pad" and not _padded and "--server" in OS.get_cmdline_args() and main != null: _pad()
+	if phase == "pad" and not _padded and "--server" in OS.get_cmdline_args() and _host() != null: _pad()
 	# coop_net_profile.py --save-phase: the journal folded into a world save at 7 s and 17 s.
-	if phase.ends_with("save") and "--server" in OS.get_cmdline_args() and main != null and _folds < 2 and now - phase_started >= 7000 + 10000 * _folds:
+	if phase.ends_with("save") and "--server" in OS.get_cmdline_args() and _host() != null and _folds < 2 and now - phase_started >= 7000 + 10000 * _folds:
 		_folds += 1
 		# As the host's own check does it (coop_game.gd _process): its next check folds.
-		main.coop_game._journal_checked = 0; main.coop_game._world_saved_at = -main.coop_game.MOTION_SAVE_MS
+		_host()._journal_checked = 0; _host()._world_saved_at = -_host().MOTION_SAVE_MS
 	return false
 
 ## The server's frame by script: each script's nodes stop processing for a
@@ -162,12 +168,12 @@ func _pad() -> void:
 	_padded = true
 	var args := OS.get_cmdline_args()
 	var count := int(args[args.find("--pad") + 1]) if "--pad" in args else 0
-	var state = main.coop_game.state
+	var state = _host().state
 	var filler := "x".repeat(300)
 	for start in range(0, count, 2000):
 		var changes := []
 		for i in range(start, mini(count, start + 2000)): changes.append(state.change("world/1000,%d/pad/%d" % [start / 2000, i], filler))
-		if not state.transact(main.coop_game.session.actor, "pad/%d" % start, changes).get("ok", false): print("PROFILE SERVER pad refused"); break
+		if not state.transact(_host().session.actor, "pad/%d" % start, changes).get("ok", false): print("PROFILE SERVER pad refused"); break
 		await process_frame
 	print("PROFILE SERVER padded %d records" % count)
 func _breakdown() -> void:
@@ -287,21 +293,20 @@ func _walk(on: bool) -> void:
 	if on: Input.action_press("move_right" if _walk_dir > 0 else "move_left")
 
 ## Where every wild Pokemon of the areas this process knows stands, for the
-## phase just ended (wild_<role>_<phase>.json beside the phase file): the
-## server's own area (its World) and those it runs without drawing them
-## (coop_population_authority.gd), a player's own area. coop_net_profile.py
-## compares each player's with the server's.
+## phase just ended (wild_<role>_<phase>.json beside the phase file): those
+## the server runs without drawing them (coop_population_authority.gd: every
+## area players are in), a player's own area. coop_net_profile.py compares
+## each player's with the server's.
 func _dump_wild() -> void:
-	if main == null or not is_instance_valid(main) or not main.started or not phase.begins_with("walk"): return
+	if not phase.begins_with("walk"): return
 	var areas := {}
-	var coop: Node = main.coop_game
 	if "--server" in OS.get_cmdline_args():
-		for area in coop.rules.sims:
-			var sim = coop.rules.sims[area]
+		if _host() == null: return
+		for area in _host().rules.sims:
+			var sim = _host().rules.sims[area]
 			if sim.populated: areas[area] = _cells(sim.state.wild)
-		areas[coop._area()] = _cells(main.world.wild_population)
-	elif not main.edge_travel_busy:
-		areas[coop._area()] = _cells(main.world.wild_population)
+	elif main != null and is_instance_valid(main) and main.started and not main.edge_travel_busy:
+		areas[main.coop_game._area()] = _cells(main.world.wild_population)
 	var file := FileAccess.open(phase_file.get_base_dir().path_join("wild_%s_%s.json" % [_role(), phase]), FileAccess.WRITE)
 	if file != null: file.store_string(JSON.stringify(areas))
 

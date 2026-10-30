@@ -110,7 +110,8 @@ func motion(actor:String,id:String,area:String,epoch:int,patches:Array)->Diction
     return delta.commit(actor,id,area,epoch,patches,true)
 
 func _prior(actor:String,id:String,args:Array)->Dictionary:
-    if not state.members.has(actor) or id.length()>80:return {"ok":false,"reason":"invalid_request"}
+    # A dedicated server, no member, coordinates (abandon) all the same.
+    if not (state.members.has(actor) or actor==preload("res://scripts/coop_state.gd").SERVER) or id.length()>80:return {"ok":false,"reason":"invalid_request"}
     var result:Dictionary=state.outcomes.get(actor+"/"+id,{})
     if result.is_empty():return {}
     return result.duplicate(true) if result.get("command_hash")==state.fingerprint(args) else {"ok":false,"reason":"reused_request_id"}
