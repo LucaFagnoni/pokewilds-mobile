@@ -853,9 +853,10 @@ jobs:
           done
           ls -la ../build/macos ../build/macos-server
 
-      # The exported server itself, as on Linux.
+      # The exported server itself, as on Linux (macOS has no `timeout`: the step's limit instead).
       - name: Server smoke test
-        run: timeout 1800 python3 -u server/smoke_test.py "$PWD/build/macos-server/PokeWilds.app/Contents/MacOS/PokeWilds" --exe
+        timeout-minutes: 30
+        run: python3 -u server/smoke_test.py "$PWD/build/macos-server/PokeWilds.app/Contents/MacOS/PokeWilds" --exe
 
       - name: Package
         run: |
